@@ -143,7 +143,7 @@ but cross-localization blocks $\mathbf{L}_{ij}$ for $i \ne j$ are zero.\\
 $  $\\
 \textbf{Advantages:} well-adapted for large differences between variables length-scales and/or for small cross-correlation (sampling noise is canceled).\\
 \textbf{Drawbacks:} ill-adapted for significant cross-correlations (signal is lost).\\
-\textbf{Cost:} $p$ applications of $\mathbf{U}_i$.
+\textbf{Cost:} one application of each $\mathbf{U}_i$.
 
 \section{Multivariate specific blocks}
 
@@ -201,29 +201,6 @@ The resulting localization matrix is $\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm
 \mathbf{L}_{ij} = \mathbf{U}_i \mathbf{S}^\mathrm{c}_i \mathbf{S}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T}
 \end{align}
 
-\subsection{Interpolation error}
-We assume that every interpolation $\mathbf{S}^\mathrm{s}$ or $\mathbf{S}^\mathrm{c}$ can be expanded as $\mathbf{S} = \mathbf{T} + \mathbf{E}$ where $\mathbf{T}$ is the "true" interpolation, i.e. the best we can get with a linear operator, and $\mathbf{E} = \mathbf{S} - \mathbf{T}$ the resulting error. 
-Thus:
-\begin{itemize}
-\item For the state grid interpolation with specific blocks:
-\begin{align}
-\mathbf{L}_{ij} & = \mathbf{S}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{S}_j^{\mathrm{s} \mathrm{T}} \nonumber \\
-& = \mathbf{T}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{T}_j^{\mathrm{s} \mathrm{T}} + \mathbf{E}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{T}_j^{\mathrm{s} \mathrm{T}} + \mathbf{T}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{E}_j^{\mathrm{s} \mathrm{T}} + \mathbf{E}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{E}_j^{\mathrm{s} \mathrm{T}}
-\end{align}
-and similarly for the state grid interpolation with a common block.
-\item For the control grid interpolation:
-\begin{align}
-\mathbf{L}_{ij} & = \mathbf{U}_i \mathbf{S}^\mathrm{c}_i \mathbf{S}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T} \nonumber \\
-& = \mathbf{U}_i \mathbf{T}^\mathrm{c}_i \mathbf{T}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T} + \mathbf{U}_i \mathbf{E}^\mathrm{c}_i \mathbf{T}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T} + \mathbf{U}_i \mathbf{T}^\mathrm{c}_i \mathbf{E}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T} + \mathbf{U}_i \mathbf{E}^\mathrm{c}_i \mathbf{E}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T}
-\end{align}
-\end{itemize}
-Assuming that interpolation errors are random with a short correlation length-scale, the control grid interpolation looks like a better option since a smoothing is always applied as the last operator. However, even with the state grid interpolation: 
-\begin{itemize}
-\item either the interpolation error is smoothed in subsequent operators,
-\item or the interpolation error is itself applied on smoothed fields at high-resolution, leading to small interpolation errors.
-\end{itemize}
-As a conclusion, we don't think that interpolation error is a major issue that should favor one approach or the other.
-
 \subsection{Localization amplitude}
 We denote $\overbar{\mathbf{u}}$ the k$^\textrm{th}$ column of $\overbar{\mathbf{U}}_i$ and $\overbar{\mathbf{u}}'$ the k$^\textrm{th}$ column of $\overbar{\mathbf{U}}_j$. The k$^\textrm{th}$ diagonal coefficient of $\overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T}$ is given by $\langle \overbar{\mathbf{u}},\overbar{\mathbf{u}}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality imposes that:
 \begin{align}
@@ -237,7 +214,7 @@ Thus, the cross-localization amplitude between variables $i$ and $j$ is necessar
 $  $\\
 \textbf{Advantages:} well-adapted for large differences between variables length-scales.\\
 \textbf{Drawbacks:} no control on the cross-localization amplitude.\\
-\textbf{Cost:} $p$ applications of $\overbar{\mathbf{U}}_i$.
+\textbf{Cost:} one application of each $\overbar{\mathbf{U}}_i$.
 
 \section{Common block}
 
@@ -310,6 +287,82 @@ $  $\\
 \textbf{Advantages:} precise control on the cross-localization amplitude.\\
 \textbf{Drawbacks:} ill-adapted for large differences between variables length-scales.\\
 \textbf{Cost:} $p$ applications of $\overbar{\mathbf{U}}$.
+
+\subsection{Common groups}
+A specific case of the multivariate-specific method can be defined with several groups of variables sharing the same localization. The $p$ variables are split into into $q$ groups of sizes $p_1$ to $p_q$. The mappging between variables and groups is given by $\alpha = G(i)$, where $\alpha$ is the group index and $i$ the variable index. For sake of simplicity, we assume that variables are reordered so that the sub-vectors of a given group are contiguous:
+\begin{align}
+\mathbf{x} = \left( \begin{array}{c}
+\widehat{\mathbf{x}}_1 \\[1ex]
+\hline
+\vdots \\
+\hline
+\widehat{\mathbf{x}}_{q}
+\end{array} \right)
+\end{align}
+where:
+\begin{align}
+\widehat{\mathbf{x}}_\alpha = \left( \begin{array}{c}
+\mathbf{x}_{\sum_{i=1}^{\alpha-1} p_i+1} \\[1ex]
+\hline
+\vdots \\
+\hline
+\mathbf{x}_{\sum_{i=1}^\alpha p_i}
+\end{array} \right)
+\end{align}
+The block $\overbar{\mathbf{U}}_\alpha \in \mathbb{R}^{\overbar{n} \times m}$ is applied to all the variables of the group $\alpha$:
+\begin{align}
+\mathbf{U} = \mathbf{S}^\mathrm{s} \left( \begin{array}{c}
+\widehat{\mathbf{U}}_1\\
+\widehat{\mathbf{U}}_2 \\
+\vdots \\
+\widehat{\mathbf{U}}_q \\
+\end{array} \right) = \mathbf{S}^\mathrm{s} \left( \begin{array}{cccc}
+\widehat{\mathbf{I}}_1 & 0 & \cdots & 0 \\
+0 & \widehat{\mathbf{I}}_2 & \ddots & \vdots \\
+\vdots & \ddots & \ddots & 0 \\
+0 & \cdots & 0 & \widehat{\mathbf{I}}_q
+\end{array} \right) \left( \begin{array}{cccc}
+\overbar{\mathbf{U}}_1 & 0 & \cdots & 0 \\
+0 & \overbar{\mathbf{U}}_2 & \ddots & \vdots \\
+\vdots & \ddots & \ddots & 0 \\
+0 & \cdots & 0 & \overbar{\mathbf{U}}_q
+\end{array} \right)
+\end{align}
+where matrices of group $\alpha$ are the concatenation of $p_\alpha$ similar blocks:
+\begin{itemize}
+\item $\widehat{\mathbf{U}}_\alpha \in \mathbb{R}^{\overbar{n} p_\alpha \times m}$:
+\begin{align}
+\widehat{\mathbf{U}}_\alpha = \left( \begin{array}{c}
+\overbar{\mathbf{U}}_\alpha\\
+\vdots \\
+\overbar{\mathbf{U}}_\alpha
+\end{array} \right)
+\end{align}
+\item $\widehat{\mathbf{I}}_\alpha \in \mathbb{R}^{\overbar{n} p_\alpha \times \overbar{n}}$:
+\begin{align}
+\widehat{\mathbf{I}}_\alpha = \left( \begin{array}{c}
+\mathbf{I}_{\overbar{n}}\\
+\vdots \\
+\mathbf{I}_{\overbar{n}}
+\end{array} \right)
+\end{align}
+\end{itemize}
+The resulting localization matrix is:
+\begin{align}
+\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \mathbf{S}^\mathrm{s} \left( \begin{array}{ccc}
+\widehat{\mathbf{U}}_1 \widehat{\mathbf{U}}_1^\mathrm{T} & \cdots & \widehat{\mathbf{U}}_1 \widehat{\mathbf{U}}_p^\mathrm{T} \\
+\vdots & \ddots & \vdots  \\
+\widehat{\mathbf{U}}_p \widehat{\mathbf{U}}_1^\mathrm{T} & \cdots & \widehat{\mathbf{U}}_p \widehat{\mathbf{U}}_p^\mathrm{T}
+\end{array} \right) \mathbf{S}^{\mathrm{s} \mathrm{T}}
+\end{align}
+In this case, each auto- or cross-localization block is given by: 
+\begin{align}
+\mathbf{L}_{ij} = \mathbf{S}^\mathrm{s}_i \overbar{\mathbf{U}}_{G(i)} \overbar{\mathbf{U}}_{G(j)}^\mathrm{T} \mathbf{S}_j^{\mathrm{s} \mathrm{T}}
+\end{align}
+$  $\\
+\textbf{Advantages:} lower cost than full multivariate-specific blocks.\\
+\textbf{Drawbacks:} more expansive than a common localization block.\\
+\textbf{Cost:} one application of each $\overbar{\mathbf{U}}_{\alpha}$.
 
 \section{Applications}
 The approaches above can be used to localize 3D variables located on different points of the grid (e.g. Arakawa C grid).\\
