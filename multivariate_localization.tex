@@ -27,9 +27,14 @@
 \usepackage{pdfpages}
 \usepackage{tikz}
 \usetikzlibrary{shapes,arrows,decorations.pathmorphing}
+\usepackage{amsmath}
+\usepackage{easybmat}
+\usepackage{multirow,bigdelim}
 
 \renewcommand*{\familydefault}{\sfdefault}
-
+\newcommand*\hexbrace[2]{%
+  \underset{#2}{\underbrace{\rule{#1}{0pt}}}}
+  
 % Margins
 \addtolength{\textheight}{1.0cm}
 \addtolength{\oddsidemargin}{-0.5cm}
@@ -90,28 +95,53 @@ Copyright \copyright 2015-... UCAR, CERFACS, METEO-FRANCE and IRIT
 
 \section{Framework}
 
-\subsection{Blocks definition}
-A localization matrix $\mathbf{L} \in \mathbb{R}^{n \times n}$ is applied to a multivariate state vector $\mathbf{x} \in \mathbb{R}^n$, built as the concatenation of $p$ sub-vectors:
+\subsection{State vector definition}
+The state vector $\mathbf{x} \in \mathbb{R}^n$ is split into $Q$ concatenated sub-vectors $\mathbf{x}_q$ (called ``groups''), each one gathering $P_q$ sub-vectors $\mathbf{x}_{p,q}$ of size $n_q$ (called ``variables''). Each sub-vector $\mathbf{x}_{p,q}$ corresponds to the data for a given physical variable (e.g. zonal wind, temperature, humidity, etc.). Thus:
 \begin{align}
 \mathbf{x} = \left( \begin{array}{c}
 \mathbf{x}_1 \\[1ex]
 \hline
 \vdots \\
 \hline
-\mathbf{x}_p
-\end{array} \right)
+\mathbf{x}_Q
+\end{array} \right) \quad \text{and} \quad \mathbf{x}_q = \left( \begin{array}{c}
+\mathbf{x}_{1,q} \\[1ex]
+\hline
+\vdots \\
+\hline
+\mathbf{x}_{P_q,q}
+\end{array} \right) 
 \end{align}
-where $\mathbf{x}_i$ is the sub-vector for variable $i$, of size $n_i$ with $\displaystyle n = \sum_{i=1}^p n_i$.\\
-$  $\\
-The localization matrix is split into blocks:
+As a consequence:
+\begin{itemize}
+\item The total number of variable sub-vectors is $\displaystyle P = \sum_{q=1}^Q P_q$.
+\item Each group sub-vector $\mathbf{x}_q$ has a size $P_q n_q$, so the total state vector size is $n = \sum_{q=1}^Q P_q n_q$.
+\end{itemize}
+The main idea behind this distribution of variables into groups is to apply the same localization to all variables within a given group.\\
+
+\subsection{Illustration setup}
+An simple example will be used as illustration throughout this note. We define a vector $\mathbf{x}$ with $Q = 3$ groups, where $P_1 = 3$, $P_2 = 1$ and $P_3 = 2$:
 \begin{align}
-\mathbf{L} = \left( \begin{array}{ccc}
-\mathbf{L}_{11} & \cdots & \mathbf{L}_{1p} \\
-\vdots & \ddots & \vdots \\
-\mathbf{L}_{p1} & \cdots & \mathbf{L}_{pp}
+\begin{array}{c@{}c}
+\mathbf{x} = \left( \begin{array}{c}
+\mathbf{x}_{1,1} \\
+\mathbf{x}_{2,1} \\
+\mathbf{x}_{3,1} \\[1ex]
+\hline
+\mathbf{x}_{1,2} \\[1ex]
+\hline
+\mathbf{x}_{1,3} \\
+\mathbf{x}_{2,3}
 \end{array} \right)
+& 
+\begin{array}{l}
+\\[-8.5mm] \rdelim\}{3}{6mm}[$\mathbf{x}_1$ (1$^\text{st}$ group of variables)] \\[11.5mm] \rdelim\}{1}{6mm}[$\mathbf{x}_2$ (2$^\text{nd}$ group of variables)] \\[3.5mm] \rdelim\}{2}{6mm}[$\mathbf{x}_3$ (3$^\text{rd}$ group of variables)]
+\end{array} \\[-1ex]
+\end{array}
 \end{align}
-The main issue is to design a positive semi-definite localization matrix, and the simple solution is to build it as:
+
+\subsection{Localization square-root}
+The localization matrix $\mathbf{L} \in \mathbb{R}^{n \times n}$ is applied to $\mathbf{x}$. The main issue is to design a positive semi-definite $\mathbf{L}$ matrix, and the simplest solution is to build it as:
 \begin{align}
 \mathbf{L} = \mathbf{UU}^\textrm{T}
 \end{align}
@@ -119,270 +149,193 @@ where $\mathbf{U} \in \mathbb{R}^{n \times m}$ is called a ``square-root'' of th
 \begin{align}
 \mathbf{x} = \mathbf{U} \mathbf{v}
 \end{align}
+We can define a square-root component $\mathbf{U}_q \in \mathbb{R}^{n_q \times m_q}$ for each group.
 
-\subsection{Shared blocks}
-For the case where several variables share the same localization, the $p$ variables are split into $q$ groups of sizes $p_1$ to $p_q$, with $\displaystyle \sum_{\alpha=1}^q p_\alpha = p$. The mapping between variables and groups is given by $\alpha = G(i)$, where $\alpha$ is the group index and $i$ the variable index. For sake of simplicity, we assume that variables are reordered so that the sub-vectors of a given group are contiguous:
+\section{Univariate localization}
+For the case where there is no cross-localization between variables, the square-root $\mathbf{U}$ can be defined as:
 \begin{align}
-\mathbf{x} = \left( \begin{array}{c}
-\widehat{\mathbf{x}}_1 \\[1ex]
+\mathbf{U} = \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
+0 & \mathbf{U}_1 & 0 & 0 & 0 & 0 \\
+0 & 0 & \mathbf{U}_1 & 0 & 0 & 0 \\[0.3ex]
 \hline
-\vdots \\
+0 & 0 & 0 & \mathbf{U}_2 & 0 & 0 \\[0.3ex]
 \hline
-\widehat{\mathbf{x}}_{q}
+0 & 0 & 0 & 0 & \mathbf{U}_3 & 0 \\
+0 & 0 & 0 & 0 & 0 & \mathbf{U}_3
 \end{array} \right)
 \end{align}
-where:
+Thus:
 \begin{align}
-\widehat{\mathbf{x}}_\alpha = \left( \begin{array}{c}
-\mathbf{x}_{\sum_{i=1}^{\alpha-1} p_i+1} \\[1ex]
+\mathbf{L} = \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 & 0 & 0 \\
+0 & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 & 0 \\
+0 & 0 & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\[0.3ex]
 \hline
-\vdots \\
+0 & 0 & 0 & \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & 0 & 0 \\[0.3ex]
 \hline
-\mathbf{x}_{\sum_{i=1}^\alpha p_i}
+0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & 0 \\
+0 & 0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
 \end{array} \right)
 \end{align}
+In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q P_q m_q$
 
-\section{Column square-root}
-In this section, the localization square-root $\mathbf{U}$ is built as a column of matrices.
+\section{Block-univariate localization}
 
-\subsection{Common block}
-The simplest method defines $\mathbf{U}$ as:
+\subsection{With duplicates}
+It is possible to set the cross-localization between the variables of a same group as duplicates of the diagonal localization, by defining $\mathbf{U}$ as: 
 \begin{align}
-\mathbf{U} = \left( \begin{array}{c}
-\overbar{\mathbf{U}} \\
-\vdots \\
-\overbar{\mathbf{U}}
-\end{array} \right) = \left( \begin{array}{c}
-\mathbf{I}_{\overbar{n}} \\
-\vdots \\
-\mathbf{I}_{\overbar{n}} \\
-\end{array} \right) \overbar{\mathbf{U}}
-\end{align}
-where $\overbar{\mathbf{U}} \in \mathbb{R}^{\overbar{n} \times \overbar{m}}$ is the common square-root and $\mathbf{I}_{\overbar{n}} \in \mathbb{R}^{\overbar{n} \times \overbar{n}}$ is the identity matrix. The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \left( \begin{array}{ccc}
-\overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} & \cdots & \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} \\
-\vdots & \ddots & \vdots  \\
-\overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} & \cdots & \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T}
+\mathbf{U} & = \left( \begin{array}{c|c|c}
+\mathbf{U}_1 & 0 & 0 \\
+\mathbf{U}_1 & 0 & 0 \\
+\mathbf{U}_1 & 0 & 0 \\[0.3ex]
+\hline
+0 & \mathbf{U}_2 & 0 \\[0.3ex]
+\hline
+0 & 0 & \mathbf{U}_3 \\
+0 & 0 & \mathbf{U}_3
+\end{array} \right) \nonumber \\
+& = \left( \begin{array}{c|c|c}
+\mathbf{I}_1 & 0 & 0 \\
+\mathbf{I}_1 & 0 & 0 \\
+\mathbf{I}_1 & 0 & 0 \\[0.3ex]
+\hline
+0 & \mathbf{I}_2 & 0 \\[0.3ex]
+\hline
+0 & 0 & \mathbf{I}_3 \\
+0 & 0 & \mathbf{I}_3
+\end{array} \right)
+\left( \begin{array}{c|c|c}
+\mathbf{U}_1 & 0 & 0 \\[0.3ex]
+\hline
+0 & \mathbf{U}_2 & 0 \\[0.3ex]
+\hline
+0 & 0 & \mathbf{U}_3
 \end{array} \right)
 \end{align}
-In this case, each auto- or cross-localization block is given by: 
+where $\mathbf{I}_q \in \mathbf{R}^{n_q,n_q}$ is the identity matrix of size $n_q$. Thus:
 \begin{align}
-\mathbf{L}_{ij} = \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T}
+\mathbf{L} = \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} \\
+0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
+\end{array} \right)
 \end{align}
-\textbf{Control vector size:} $\displaystyle m = \overbar{m}$.\\
-\textbf{Cost:} one application of $\overbar{\mathbf{U}}$.
+In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q m_q$
 
-\subsection{Specific blocks}
-A third method defines $\mathbf{U}$ as:
+\subsection{With weighted duplicates}
+A variant of the previous cases uses group-specific lower triangular matrices $\mathbf{S}^q \in \mathbb{R}^{P_q \times P_q}$ to define $\mathbf{U}$ as: 
 \begin{align}
-\mathbf{U} = \left( \begin{array}{c}
-\overbar{\mathbf{U}}_1 \\
-\vdots \\
-\overbar{\mathbf{U}}_p
+\mathbf{U} & = \left( \begin{array}{ccc|c|ccc}
+S^1_{1,1} \mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
+S^1_{2,1} \mathbf{U}_1 & S^1_{2,2} \mathbf{U}_1 & 0 & 0 & 0 & 0 \\
+S^1_{3,1} \mathbf{U}_1 & S^1_{3,2} \mathbf{U}_1 & S^1_{3,3} \mathbf{U}_1 & 0 & 0 & 0 \\
+\hline
+0 & 0 & 0 & S^2_{1,1} \mathbf{U}_2 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & S^3_{1,1} \mathbf{U}_3 & 0 \\
+0 & 0 & 0 & 0 & S^3_{2,1} \mathbf{U}_3 & S^3_{2,2} \mathbf{U}_3
+\end{array} \right) \nonumber \\
+& = \left( \begin{array}{ccc|c|ccc}
+S^1_{1,1} \mathbf{I}_1 & 0 & 0 & 0 & 0 & 0 \\
+S^1_{2,1} \mathbf{I}_1 & S^1_{2,2} \mathbf{I}_1 & 0 & 0 & 0 & 0 \\
+S^1_{3,1} \mathbf{I}_1 & S^1_{3,2} \mathbf{I}_1 & S^1_{3,3} \mathbf{I}_1 & 0 & 0 & 0 \\
+\hline
+0 & 0 & 0 & S^2_{1,1} \mathbf{I}_2 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & S^3_{1,1} \mathbf{I}_3 & 0 \\
+0 & 0 & 0 & 0 & S^3_{2,1} \mathbf{I}_3 & S^3_{2,1} \mathbf{I}_3
+\end{array} \right) \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
+0 & \mathbf{U}_1 & 0 & 0 & 0 & 0 \\
+0 & 0 & \mathbf{U}_1 & 0 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & \mathbf{U}_2 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & \mathbf{U}_3 & 0 \\
+0 & 0 & 0 & 0 & 0 & \mathbf{U}_3
 \end{array} \right)
 \end{align}
-where all $\overbar{\mathbf{U}}_i \in \mathbb{R}^{n_i \times \overbar{m}}$ are different, but share the same number of columns $\overbar{m}$, which is also the size of the control vector: $m = \overbar{m}$. The resulting localization matrix is:
+Thus:
 \begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \left( \begin{array}{ccc}
-\overbar{\mathbf{U}}_1 \overbar{\mathbf{U}}_1^\mathrm{T} & \cdots & \overbar{\mathbf{U}}_1 \overbar{\mathbf{U}}_p^\mathrm{T} \\
-\vdots & \ddots & \vdots  \\
-\overbar{\mathbf{U}}_p \overbar{\mathbf{U}}_1^\mathrm{T} & \cdots & \overbar{\mathbf{U}}_p \overbar{\mathbf{U}}_p^\mathrm{T}
+\mathbf{L} = \left( \begin{array}{ccc|c|cc}
+W^1_{1,1} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{1,2} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{1,3} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\
+W^1_{2,1} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{2,2} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{2,3} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\
+W^1_{3,1} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{3,2} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{3,3} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & W^2_{1,1} \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & W^3_{1,1} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & W^3_{1,2} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} \\
+0 & 0 & 0 & 0 & W^3_{2,1} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & W^3_{2,2} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
 \end{array} \right)
 \end{align}
-In this case, each auto- or cross-localization block is given by: 
-\begin{align}
-\mathbf{L}_{ij} = \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T}
-\end{align}
-\textbf{Control vector size:} $\displaystyle m = \overbar{m}$.\\
-\textbf{Cost:} one application of each $\overbar{\mathbf{U}}_i$.
-
-\subsection{Shared blocks}
-For the case where several variables share the same localization, a common localization $\overbar{\mathbf{U}}_\alpha \in \mathbb{R}^{n_\alpha \times \overbar{m}}$ is defined for each group of variables $\alpha$, along with the concatenated matrices:
-\begin{itemize}
-\item $\widehat{\overbar{\mathbf{U}}}_\alpha \in \mathbb{R}^{n_\alpha p_\alpha \times \overbar{m}}$:
-\begin{align}
-\widehat{\overbar{\mathbf{U}}}_\alpha = \left( \begin{array}{c}
-\overbar{\mathbf{U}}_\alpha\\
-\vdots \\
-\overbar{\mathbf{U}}_\alpha
-\end{array} \right)
-\end{align}
-\item $\widehat{\mathbf{I}}_\alpha \in \mathbb{R}^{n_\alpha p_\alpha \times n_\alpha}$:
-\begin{align}
-\widehat{\mathbf{I}}_\alpha = \left( \begin{array}{c}
-\mathbf{I}_{\overbar{n}}\\
-\vdots \\
-\mathbf{I}_{\overbar{n}}
-\end{array} \right)
-\end{align}
-\end{itemize}
-The square-root $\mathbf{U}$ is defined as:
-\begin{align}
-\mathbf{U} = \left( \begin{array}{c}
-\widehat{\overbar{\mathbf{U}}}_1\\
-\widehat{\overbar{\mathbf{U}}}_2 \\
-\vdots \\
-\widehat{\overbar{\mathbf{U}}}_q \\
-\end{array} \right) = \left( \begin{array}{cccc}
-\widehat{\mathbf{I}}_1 & 0 & \cdots & 0 \\
-0 & \widehat{\mathbf{I}}_2 & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-0 & \cdots & 0 & \widehat{\mathbf{I}}_q
-\end{array} \right) \left( \begin{array}{c}
-\overbar{\mathbf{U}}_1 \\
-\overbar{\mathbf{U}}_2 \\
-\vdots  \\
-\overbar{\mathbf{U}}_q
-\end{array} \right)
-\end{align}
-The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \left( \begin{array}{ccc}
-\widehat{\overbar{\mathbf{U}}}_1 \widehat{\overbar{\mathbf{U}}}_1^\mathrm{T} & \cdots & \widehat{\overbar{\mathbf{U}}}_1 \widehat{\overbar{\mathbf{U}}}_q^\mathrm{T} \\
-\vdots & \ddots & \vdots  \\
-\widehat{\overbar{\mathbf{U}}}_q \widehat{\overbar{\mathbf{U}}}_1^\mathrm{T} & \cdots & \widehat{\overbar{\mathbf{U}}}_q \widehat{\overbar{\mathbf{U}}}_q^\mathrm{T}
-\end{array} \right)
-\end{align}
-In this case, each auto- or cross-localization block is given by: 
-\begin{align}
-\mathbf{L}_{ij} = \overbar{\mathbf{U}}_{G(i)} \overbar{\mathbf{U}}_{G(j)}^\mathrm{T}
-\end{align}
+where $\mathbf{W}^q = \mathbf{S}^q \mathbf{S}^{q\mathrm{T}}$ provides the weights applied to each variable block with the group $q$. In practice, it is easier to set $\mathbf{W}^q$ and to compute $\mathbf{S}^q$ using a Cholesky decomposition. It also seems reasonable to set the diagonal elements of $\mathbf{W}^q$ to one, even if it is not mandatory.\\
 $  $\\
-\textbf{Control vector size:} $\displaystyle m = \overbar{m}$.\\
-\textbf{Cost:} one application of each $\mathbf{U}_\alpha$.\\
-$  $\\
-\textbf{Important:} We denote $\overbar{\mathbf{u}}$ the k$^\textrm{th}$ line of $\overbar{\mathbf{U}}_i$ and $\overbar{\mathbf{u}}'$ the k$^\textrm{th}$ line of $\overbar{\mathbf{U}}_j$. The k$^\textrm{th}$ diagonal coefficient of $\overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T}$ is given by $\langle \overbar{\mathbf{u}},\overbar{\mathbf{u}}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality imposes that:
+In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q P_q m_q$
+
+\section{Multivariate localization}
+
+\subsection{Definition}
+For the case where the cross-localizations between variables are implicitly given as product of square-roots, $\mathbf{U}$ can be reduced to a column:
 \begin{align}
-\vert \langle \overbar{\mathbf{u}},\overbar{\mathbf{u}}' \rangle \vert & \le \sqrt{\langle \overbar{\mathbf{u}},\overbar{\mathbf{u}} \rangle \langle \overbar{\mathbf{u}}',\mathbf{u}' \rangle}
+\mathbf{U} & = \left( \begin{array}{c}
+\mathbf{U}_1 \\
+\mathbf{U}_1 \\
+\mathbf{U}_1 \\[0.3ex]
+\hline
+\mathbf{U}_2 \\[0.3ex]
+\hline
+\mathbf{U}_3 \\
+\mathbf{U}_3
+\end{array} \right) \nonumber \\
+& = \left( \begin{array}{c|c|c}
+\mathbf{I}_1 & 0 & 0 \\
+\mathbf{I}_1 & 0 & 0 \\
+\mathbf{I}_1 & 0 & 0 \\[0.3ex]
+\hline
+0 & \mathbf{I}_2 & 0 \\[0.3ex]
+\hline
+0 & 0 & \mathbf{I}_3 \\
+0 & 0 & \mathbf{I}_3
+\end{array} \right)
+\left( \begin{array}{c}
+\mathbf{U}_1 \\[0.3ex]
+\hline
+\mathbf{U}_2 \\[0.3ex]
+\hline
+\mathbf{U}_3
+\end{array} \right)
 \end{align}
-Thus, the cross-localization amplitude between variables $i$ and $j$ is necessarily smaller than the geometric mean of the auto-localization amplitudes for variables $i$ and $j$. Besides, the more the vectors $\overbar{\mathbf{u}}$ and $\overbar{\mathbf{u}}'$ have different shapes, the smaller their inner product and the smaller the cross-localization amplitude.
+An additional assumption is required here: the size of the group sub-vectors must be the same for all groups, i.e. $m_1 = ... = m_Q = \overbar{m}$. Thus:
+\begin{align}
+\mathbf{L} = \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} \\
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} \\
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} \\[0.3ex]
+\hline
+\mathbf{U}_2 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_3^\mathrm{T} \\[0.3ex]
+\hline
+\mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} \\
+\mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
+\end{array} \right)
+\end{align}
+In this case, the total control vector size is $\displaystyle m = \overbar{m}$.
+
+\subsection{Cross-localization amplitude}
+For $1 \le q,q' \le Q$, we denote $\mathbf{u}$ the k$^\textrm{th}$ column of $\mathbf{U}_q$ and $\mathbf{u}'$ the k$^\textrm{th}$ column of $\mathbf{U}_{q'}$. The k$^\textrm{th}$ diagonal coefficient of $\mathbf{U}_q \mathbf{U}_{q'}^\mathrm{T}$ is given by $\langle \mathbf{u},\mathbf{u}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality requires that:
+\begin{align}
+\vert \langle \mathbf{u},\mathbf{u}' \rangle \vert & \le \sqrt{\langle \mathbf{u},\mathbf{u} \rangle \langle \mathbf{u}',\mathbf{u}' \rangle}
+\end{align}
+Thus, the cross-localization amplitude between groups $q$ and $q'$ is necessarily smaller than the geometric mean of the auto-localization amplitudes for groups $q$ and $q'$. Besides, the more the vectors $\mathbf{u}$ and $\mathbf{u}'$ have different shapes, the smaller their inner product and the smaller the cross-localization amplitude.
 \begin{center}
 \includegraphics[width=\linewidth]{convolution_exp.pdf}
 \captionof{figure}{1D illustration of the product of two localization square-root, with Gaussian localization functions. The dashed black line shows the function amplitude, while the solid red line shows the function length-scale.}
 \end{center}
-
-\section{Lower triangular square-root}
-
-\subsection{General case}
-
-\subsection{Same localization}
-A fourth and final method defines $\mathbf{U}$ as:
-\begin{align}
-\mathbf{U} & = \mathbf{S}^\mathrm{s} \left( \begin{array}{cccc}
-Q_{1,1} \overbar{\mathbf{U}} & 0 & \cdots & 0 \\
-Q_{2,1} \overbar{\mathbf{U}} & Q_{2,2} \overbar{\mathbf{U}} & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-Q_{p,1} \overbar{\mathbf{U}} & \cdots & Q_{p,p-1} \overbar{\mathbf{U}} & Q_{p,p} \overbar{\mathbf{U}}
-\end{array} \right) \\
- & = \mathbf{S}^\mathrm{s} \left( \begin{array}{cccc}
-Q_{1,1} \mathbf{I}_{\overbar{n}} & 0 & \cdots & 0 \\
-Q_{2,1} \mathbf{I}_{\overbar{n}} & Q_{2,2} \mathbf{I}_{\overbar{n}} & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-Q_{p,1} \mathbf{I}_{\overbar{n}} & \cdots & Q_{p,p-1} \mathbf{I}_{\overbar{n}} & Q_{p,p} \mathbf{I}_{\overbar{n}}
-\end{array} \right) \left( \begin{array}{cccc}
-\overbar{\mathbf{U}} & 0 & \cdots & 0 \\
-0 & \overbar{\mathbf{U}} & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-0 & \cdots & 0 & \overbar{\mathbf{U}} 
-\end{array} \right)
-\end{align}
-where $\mathbf{I}_{\overbar{n}} \in \mathbb{R}^{\overbar{n} \times \overbar{n}}$ is the identity matrix. It should be noted that to apply $\mathbf{U}$, the matrix $\overbar{\mathbf{U}}$ needs to be applied $p$ times. The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \mathbf{S}^\mathrm{s} \left( \begin{array}{ccc}
-W_{1,1} \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} & \cdots & W_{1,p} \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} \\
-\vdots & \ddots & \vdots  \\
-W_{p,1} \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} & \cdots & W_{p,p} \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T}
-\end{array} \right) \mathbf{S}^{\mathrm{s} \mathrm{T}}
-\end{align}
-where $\mathbf{W} = \mathbf{Q} \mathbf{Q}^\textrm{T}$. In this case, each auto- or cross-localization block is given by: 
-\begin{align}
-\mathbf{L}_{ij} = W_{i,j} \mathbf{S}^\mathrm{s}_i \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} \mathbf{S}_j^{\mathrm{s} \mathrm{T}}
-\end{align}
-The actual process would be reversed: first define $\mathbf{W}$, and its square-root decomposition $\mathbf{Q}$. Since $\mathbf{W}$ and $\mathbf{Q}$ are square matrices of size $p$, a Cholesky decomposition can work.\\
-$  $\\
-\textbf{Advantages:} precise control on the cross-localization amplitude.\\
-\textbf{Drawbacks:} ill-adapted for large differences between variables length-scales.\\
-\textbf{Cost:} $p$ applications of $\overbar{\mathbf{U}}$.
-
-\subsection{Diagonal case}
-A second method defines $\mathbf{U}$ as:
-\begin{align}
-\mathbf{U} = \left( \begin{array}{cccc}
-\mathbf{U}_1 & 0 & \cdots & 0 \\
-0 & \mathbf{U}_2 & \cdots & 0 \\
-\vdots & \vdots & \ddots & \vdots \\
-0 & 0 & \cdots & \mathbf{U}_p
-\end{array} \right)
-\end{align}
-where $\mathbf{U}_i \in \mathbb{R}^{n_i \times m_i}$, $m_i$ being the size of the control sub-vector related to variable $i$ with $\displaystyle m = \sum_{i=1}^p m_i$. The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \left( \begin{array}{cccc}
-\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & \cdots & 0 \\
-0 & \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & \cdots & 0 \\
-\vdots & \vdots & \ddots & \vdots \\
-0 & 0 & \cdots & \mathbf{U}_p \mathbf{U}_p^\mathrm{T} 
-\end{array} \right)
-\end{align}
-In this case, auto-localization blocks are well defined:
-\begin{align}
-\mathbf{L}_{ii} = \mathbf{U}_i \mathbf{U}_i^\mathrm{T}
-\end{align}
-but cross-localization blocks $\mathbf{L}_{ij}$ are zero for $i \ne j$.\\
-$  $\\
-\textbf{Control vector size:} $\displaystyle m = \sum_{i=1}^p m_i$.\\
-\textbf{Cost:} one application of each $\mathbf{U}_i$.
-
-\subsection{Block-diagonal case}
-For the case where several variables share the same localization, a common localization $\mathbf{U}_\alpha \in \mathbb{R}^{n_\alpha \times m_\alpha}$ is defined for each group of variables $\alpha$, along with the concatenated matrix:
-\begin{itemize}
-\item $\widehat{\mathbf{U}}_\alpha \in \mathbb{R}^{n_\alpha p_\alpha \times m_\alpha}$:
-\begin{align}
-\widehat{\mathbf{U}}_\alpha = \left( \begin{array}{c}
-\mathbf{U}_\alpha\\
-\vdots \\
-\mathbf{U}_\alpha
-\end{array} \right)
-\end{align}
-\end{itemize}
-The square-root $\mathbf{U}$ is defined as:
-\begin{align}
-\mathbf{U} = \left( \begin{array}{cccc}
-\widehat{\mathbf{U}}_1 & 0 & \cdots & 0 \\
-0 & \widehat{\mathbf{U}}_2 & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-0 & \cdots & 0 & \widehat{\mathbf{U}}_q
-\end{array} \right) = \left( \begin{array}{cccc}
-\widehat{\mathbf{I}}_1 & 0 & \cdots & 0 \\
-0 & \widehat{\mathbf{I}}_2 & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-0 & \cdots & 0 & \widehat{\mathbf{I}}_q
-\end{array} \right) \left( \begin{array}{cccc}
-\mathbf{U}_1 & 0 & \cdots & 0 \\
-0 & \mathbf{U}_2 & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-0 & \cdots & 0 & \mathbf{U}_q
-\end{array} \right)
-\end{align}
-The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \left( \begin{array}{cccc}
-\widehat{\mathbf{U}}_1 \widehat{\mathbf{U}}_1^\mathrm{T} & 0 & \cdots & 0 \\
-0 & \widehat{\mathbf{U}}_2 \widehat{\mathbf{U}}_2^\mathrm{T} & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-0 & \cdots & 0 & \widehat{\mathbf{U}}_q \widehat{\mathbf{U}}_q^\mathrm{T}
-\end{array} \right)
-\end{align}
-In this case, each auto- or cross-localization block within a group of variables ($G(i) = G(j)$) is given by: 
-\begin{align}
-\mathbf{L}_{ij} = \mathbf{U}_{G(i)} \mathbf{U}_{G(i)}^\mathrm{T}
-\end{align}
-but cross-localization blocks $\mathbf{L}_{ij}$ are zero for $G(i) \ne G(j)$ (variables of different groups).\\
-$  $\\
-\textbf{Control vector size:} $\displaystyle m = \sum_{\alpha=1}^q m_\alpha$.\\
-\textbf{Cost:} one application of each $\mathbf{U}_\alpha$.
-
-\clearpage
 
 \bibliographystyle{mybib-en}
 \bibliography{multivariate_localization}
