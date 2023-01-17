@@ -96,7 +96,7 @@ Copyright \copyright 2015-... UCAR, CERFACS, METEO-FRANCE and IRIT
 \section{Framework}
 
 \subsection{State vector definition}
-The state vector $\mathbf{x} \in \mathbb{R}^n$ is split into $Q$ concatenated sub-vectors $\mathbf{x}_q$ (called ``groups''), each one gathering $P_q$ sub-vectors $\mathbf{x}_{p,q}$ of size $n_q$ (called ``variables''). Each sub-vector $\mathbf{x}_{p,q}$ corresponds to the data for a given physical variable (e.g. zonal wind, temperature, humidity, etc.). Thus:
+The state vector $\mathbf{x} \in \mathbb{R}^n$ is split into $Q$ concatenated sub-vectors $\mathbf{x}_q$ (called ``groups''), each one gathering $P_q$ sub-vectors $\mathbf{x}_{p,q}$ of size $n_q$ (called ``variables''). Each sub-vector $\mathbf{x}_{p,q}$ corresponds to the data for a given physical variable (e.g. zonal wind, temperature, humidity, etc.). In a given group, all variables have the same size ($n_q$). Thus:
 \begin{align}
 \mathbf{x} = \left( \begin{array}{c}
 \mathbf{x}_1 \\[1ex]
@@ -114,8 +114,8 @@ The state vector $\mathbf{x} \in \mathbb{R}^n$ is split into $Q$ concatenated su
 \end{align}
 As a consequence:
 \begin{itemize}
-\item The total number of variable sub-vectors is $\displaystyle P = \sum_{q=1}^Q P_q$.
-\item Each group sub-vector $\mathbf{x}_q$ has a size $P_q n_q$, so the total state vector size is $n = \displaystyle \sum_{q=1}^Q P_q n_q$.
+\item The total number of variables is $\displaystyle P = \sum_{q=1}^Q P_q$.
+\item Each group $\mathbf{x}_q$ has a size $P_q n_q$, so the full state vector size is $n = \displaystyle \sum_{q=1}^Q P_q n_q$.
 \end{itemize}
 The main idea behind this distribution of variables into groups is to apply the same localization to all variables within a given group.\\
 
@@ -151,7 +151,9 @@ where $\mathbf{U} \in \mathbb{R}^{n \times m}$ is called a ``square-root'' of th
 \end{align}
 We can define a square-root component $\mathbf{U}_q \in \mathbb{R}^{n_q \times m_q}$ for each group.
 
-\section{Univariate localization}
+\section{Possible implementations}
+
+\subsection{Univariate localization}
 For the case where there is no cross-localization between variables, the square-root $\mathbf{U}$ can be defined as:
 \begin{align}
 \mathbf{U} = \left( \begin{array}{ccc|c|cc}
@@ -180,9 +182,7 @@ Thus:
 \end{align}
 In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q P_q m_q$
 
-\section{Block-univariate localization}
-
-\subsection{With duplicates}
+\subsection{Duplicated localization}
 It is possible to define the cross-localization between the variables of a same group as duplicates of the diagonal localization, by defining $\mathbf{U}$ as: 
 \begin{align}
 \mathbf{U} & = \left( \begin{array}{c|c|c}
@@ -228,8 +228,8 @@ where $\mathbf{I}_q \in \mathbf{R}^{n_q,n_q}$ is the identity matrix of size $n_
 \end{align}
 In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q m_q$
 
-\subsection{With weighted duplicates}
-A variant of the previous cases uses group-specific lower triangular matrices $\mathbf{S}^q \in \mathbb{R}^{P_q \times P_q}$ to define $\mathbf{U}$ as: 
+\subsection{Duplicated and weighted localization}
+A variant of the previous case uses group-specific lower triangular matrices $\mathbf{S}^q \in \mathbb{R}^{P_q \times P_q}$ to define $\mathbf{U}$ as: 
 \begin{align}
 \mathbf{U} & = \left( \begin{array}{ccc|c|ccc}
 S^1_{1,1} \mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
@@ -274,14 +274,12 @@ W^1_{3,1} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{3,2} \mathbf{U}_1 \mathbf{
 0 & 0 & 0 & 0 & W^3_{2,1} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & W^3_{2,2} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
 \end{array} \right)
 \end{align}
-where $\mathbf{W}^q = \mathbf{S}^q \mathbf{S}^{q\mathrm{T}}$ provides the weights applied to each variable block with the group $q$. In practice, it is easier to set $\mathbf{W}^q$ and to compute $\mathbf{S}^q$ using a Cholesky decomposition. It also seems reasonable to set the diagonal elements of $\mathbf{W}^q$ to one, even if it is not mandatory.\\
+where $\mathbf{W}^q = \mathbf{S}^q \mathbf{S}^{q\mathrm{T}}$ provides the weights applied to each covariance between variables within the group $q$. In practice, it is easier to set $\mathbf{W}^q$ and to compute $\mathbf{S}^q$ using a Cholesky decomposition. It also seems reasonable to set the diagonal elements of $\mathbf{W}^q$ to one, even if it is not mandatory.\\
 $  $\\
 In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q P_q m_q$
 
-\section{Multivariate localization}
-
-\subsection{Definition}
-For the case where the cross-localizations between variables are implicitly given as product of square-roots, $\mathbf{U}$ can be reduced to a column:
+\subsection{Multivariate localization}
+For the case where the cross-localization between variables is implicitly given as the product of square-roots, $\mathbf{U}$ can be reduced to a column:
 \begin{align}
 \mathbf{U} & = \left( \begin{array}{c}
 \mathbf{U}_1 \\
@@ -324,10 +322,9 @@ An additional assumption is required here: the size of the group sub-vectors mus
 \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
 \end{array} \right)
 \end{align}
-In this case, the total control vector size is $\displaystyle m = \overbar{m}$.
-
-\subsection{Cross-localization amplitude}
-For $1 \le q,q' \le Q$, we denote $\mathbf{u}$ the k$^\textrm{th}$ column of $\mathbf{U}_q$ and $\mathbf{u}'$ the k$^\textrm{th}$ column of $\mathbf{U}_{q'}$. The k$^\textrm{th}$ diagonal coefficient of $\mathbf{U}_q \mathbf{U}_{q'}^\mathrm{T}$ is given by $\langle \mathbf{u},\mathbf{u}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality requires that:
+In this case, the total control vector size is $\displaystyle m = \overbar{m}$.\\
+$  $\\
+The amplitude of cross-localization is not one in this case. For $1 \le q,q' \le Q$, we denote $\mathbf{u}$ the k$^\textrm{th}$ column of $\mathbf{U}_q$ and $\mathbf{u}'$ the k$^\textrm{th}$ column of $\mathbf{U}_{q'}$. The k$^\textrm{th}$ diagonal coefficient of $\mathbf{U}_q \mathbf{U}_{q'}^\mathrm{T}$ is given by $\langle \mathbf{u},\mathbf{u}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality requires that:
 \begin{align}
 \vert \langle \mathbf{u},\mathbf{u}' \rangle \vert & \le \sqrt{\langle \mathbf{u},\mathbf{u} \rangle \langle \mathbf{u}',\mathbf{u}' \rangle}
 \end{align}
