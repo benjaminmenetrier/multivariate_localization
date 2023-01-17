@@ -27,9 +27,14 @@
 \usepackage{pdfpages}
 \usepackage{tikz}
 \usetikzlibrary{shapes,arrows,decorations.pathmorphing}
+\usepackage{amsmath}
+\usepackage{easybmat}
+\usepackage{multirow,bigdelim}
 
 \renewcommand*{\familydefault}{\sfdefault}
-
+\newcommand*\hexbrace[2]{%
+  \underset{#2}{\underbrace{\rule{#1}{0pt}}}}
+  
 % Margins
 \addtolength{\textheight}{1.0cm}
 \addtolength{\oddsidemargin}{-0.5cm}
@@ -89,238 +94,245 @@ Copyright \copyright 2015-... UCAR, CERFACS, METEO-FRANCE and IRIT
 
 
 \section{Framework}
-A localization matrix $\mathbf{L} \in \mathbb{R}^{n \times n}$ is applied to a multivariate state vector $\mathbf{x} \in \mathbb{R}^n$, built as the concatenation of $p$ sub-vectors:
+
+\subsection{State vector definition}
+The state vector $\mathbf{x} \in \mathbb{R}^n$ is split into $Q$ concatenated sub-vectors $\mathbf{x}_q$ (called ``groups''), each one gathering $P_q$ sub-vectors $\mathbf{x}_{p,q}$ of size $n_q$ (called ``variables''). Each sub-vector $\mathbf{x}_{p,q}$ corresponds to the data for a given physical variable (e.g. zonal wind, temperature, humidity, etc.). In a given group, all variables have the same size ($n_q$). Thus:
 \begin{align}
 \mathbf{x} = \left( \begin{array}{c}
 \mathbf{x}_1 \\[1ex]
 \hline
 \vdots \\
 \hline
-\mathbf{x}_p
-\end{array} \right)
+\mathbf{x}_Q
+\end{array} \right) \quad \text{and} \quad \mathbf{x}_q = \left( \begin{array}{c}
+\mathbf{x}_{1,q} \\[1ex]
+\hline
+\vdots \\
+\hline
+\mathbf{x}_{P_q,q}
+\end{array} \right) 
 \end{align}
-where $\mathbf{x}_i$ is the sub-vector for variable $i$, of size $n_i$. Obviously, $\displaystyle n = \sum_{i=1}^p n_i$.\\
-$  $\\
-The localization matrix is split into blocks:
-\begin{align*}
-\mathbf{L} = \left( \begin{array}{ccc}
-\mathbf{L}_{11} & \cdots & \mathbf{L}_{1p} \\
-\vdots & \ddots & \vdots \\
-\mathbf{L}_{p1} & \cdots & \mathbf{L}_{pp}
-\end{array} \right)
-\end{align*}
-The problem is to design a positive semi-definite localization matrix:
+As a consequence:
 \begin{itemize}
-\item $\mathbf{L}_{ii}$ should be positive semi-definite,
-\item the constraint on $\mathbf{L}_{ij}$ for $i \ne j$ is less obvious...
+\item The total number of variables is $\displaystyle P = \sum_{q=1}^Q P_q$.
+\item Each group $\mathbf{x}_q$ has a size $P_q n_q$, so the full state vector size is $n = \displaystyle \sum_{q=1}^Q P_q n_q$.
 \end{itemize}
-The solution is to build a square-root $\mathbf{U} \in \mathbb{R}^{n \times m}$ of the localization matrix $\mathbf{L}$, such that $\mathbf{L} = \mathbf{UU}^\textrm{T}$. The control vector $\mathbf{v}$ such that $\mathbf{x} = \mathbf{U} \mathbf{v}$ is defined in the control space of size $m$.\\
+The main idea behind this distribution of variables into groups is to apply the same localization to all variables within a given group.\\
 
-\section{Univariate specific blocks}
-The simplest method is to design $\mathbf{U}$ as:
+\subsection{Illustration setup}
+A simple example will be used as an illustration throughout this note. We define a vector $\mathbf{x}$ with $Q = 3$ groups, where $P_1 = 3$, $P_2 = 1$ and $P_3 = 2$:
 \begin{align}
-\mathbf{U} = \left( \begin{array}{cccc}
-\mathbf{U}_1 & 0 & \cdots & 0 \\
-0 & \mathbf{U}_2 & \cdots & 0 \\
-\vdots & \vdots & \ddots & \vdots \\
-0 & 0 & \cdots & \mathbf{U}_p
+\begin{array}{c@{}c}
+\mathbf{x} = \left( \begin{array}{c}
+\mathbf{x}_{1,1} \\
+\mathbf{x}_{2,1} \\
+\mathbf{x}_{3,1} \\[1ex]
+\hline
+\mathbf{x}_{1,2} \\[1ex]
+\hline
+\mathbf{x}_{1,3} \\
+\mathbf{x}_{2,3}
 \end{array} \right)
-\end{align}
-where $\mathbf{U}_i \in \mathbb{R}^{n_i \times m_i}$, $m_i$ being the size of the control sub-vector related to variable $i$ with $\displaystyle m = \sum_{i=1}^p m_i$. The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \left( \begin{array}{cccc}
-\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & \cdots & 0 \\
-0 & \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & \cdots & 0 \\
-\vdots & \vdots & \ddots & \vdots \\
-0 & 0 & \cdots & \mathbf{U}_p \mathbf{U}_p^\mathrm{T} 
-\end{array} \right)
-\end{align}
-In this case, auto-localization blocks are well defined:
-\begin{align}
-\mathbf{L}_{ii} = \mathbf{U}_i \mathbf{U}_i^\mathrm{T}
-\end{align}
-but cross-localization blocks $\mathbf{L}_{ij}$ for $i \ne j$ are zero.\\
-$  $\\
-\textbf{Advantages:} well-adapted for large differences between variables length-scales and/or for small cross-correlation (sampling noise is canceled).\\
-\textbf{Drawbacks:} ill-adapted for significant cross-correlations (signal is lost).\\
-\textbf{Cost:} $p$ applications of $\mathbf{U}_i$.
-
-\section{Multivariate specific blocks}
-
-\subsection{State grid interpolation}
-A second method is to perform interpolations to and from a common state grid of size $\overbar{n}$. $\mathbf{S}^\mathrm{s}_i \in \mathbb{R}^{n_i \times \overbar{n}}$ is defined as the interpolation from the common state grid to the state grid of variable $i$. We gather these matrices into a global state interpolation matrix $\mathbf{S}^\mathrm{s}$:
-\begin{align}
-\mathbf{S}^\mathrm{s} = \left( \begin{array}{cccc}
-\mathbf{S}^\mathrm{s}_1 & 0 & \cdots & 0 \\
-0 & \mathbf{S}^\mathrm{s}_2 & \cdots & 0 \\
-\vdots & \vdots & \ddots & \vdots \\
-0 & 0 & \cdots & \mathbf{S}^\mathrm{s}_p
-\end{array} \right)
-\end{align}
-A specific block $\overbar{\mathbf{U}}_i \in \mathbb{R}^{\overbar{n} \times m}$ is applied to each variable $i$:
-\begin{align}
-\mathbf{U} = \mathbf{S}^\mathrm{s} \left( \begin{array}{c}
-\overbar{\mathbf{U}}_1 \\
-\vdots \\
-\overbar{\mathbf{U}}_p
-\end{array} \right)
-\end{align}
-The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \mathbf{S}^\mathrm{s} \left( \begin{array}{ccc}
-\overbar{\mathbf{U}}_1 \overbar{\mathbf{U}}_1^\mathrm{T} & \cdots & \overbar{\mathbf{U}}_1 \overbar{\mathbf{U}}_p^\mathrm{T} \\
-\vdots & \ddots & \vdots  \\
-\overbar{\mathbf{U}}_p \overbar{\mathbf{U}}_1^\mathrm{T} & \cdots & \overbar{\mathbf{U}}_p \overbar{\mathbf{U}}_p^\mathrm{T}
-\end{array} \right) \mathbf{S}^{\mathrm{s} \mathrm{T}}
-\end{align}
-In this case, each auto- or cross-localization block is given by: 
-\begin{align}
-\mathbf{L}_{ij} = \mathbf{S}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{S}_j^{\mathrm{s} \mathrm{T}}
+& 
+\begin{array}{l}
+\\[-8.5mm] \rdelim\}{3}{6mm}[$\mathbf{x}_1$ (1$^\text{st}$ group of variables)] \\[11.5mm] \rdelim\}{1}{6mm}[$\mathbf{x}_2$ (2$^\text{nd}$ group of variables)] \\[3.5mm] \rdelim\}{2}{6mm}[$\mathbf{x}_3$ (3$^\text{rd}$ group of variables)]
+\end{array} \\[-1ex]
+\end{array}
 \end{align}
 
-\subsection{Control grid interpolation}
-An alternative to this method is to perform interpolations to and from a common control grid of size $\overbar{m}$. $\mathbf{S}^\mathrm{c}_i \in \mathbb{R}^{m_i \times \overbar{m}}$ is defined as the interpolation from the common vector grid to the control grid of variable $i$. We can write a global interpolation matrix $\mathbf{S}^\mathrm{c}$ as:
+\subsection{Localization square-root}
+The localization matrix $\mathbf{L} \in \mathbb{R}^{n \times n}$ is applied to $\mathbf{x}$. The main issue is to design a positive semi-definite $\mathbf{L}$ matrix, and the simplest solution is to build it as:
 \begin{align}
-\mathbf{S}^\mathrm{c} = \left( \begin{array}{cccc}
-\mathbf{S}^\mathrm{c}_1 & 0 & \cdots & 0 \\
-0 & \mathbf{S}^\mathrm{c}_2 & \cdots & 0 \\
-\vdots & \vdots & \ddots & \vdots \\
-0 & 0 & \cdots & \mathbf{S}^\mathrm{c}_p
+\mathbf{L} = \mathbf{UU}^\textrm{T}
+\end{align}
+where $\mathbf{U} \in \mathbb{R}^{n \times m}$ is called a ``square-root'' of the localization matrix $\mathbf{L}$. The control vector $\mathbf{v} \in \mathbb{R}^m$ is such that:
+\begin{align}
+\mathbf{x} = \mathbf{U} \mathbf{v}
+\end{align}
+We can define a square-root component $\mathbf{U}_q \in \mathbb{R}^{n_q \times m_q}$ for each group.
+
+\section{Possible implementations}
+
+\subsection{Univariate localization}
+For the case where there is no cross-localization between variables, the square-root $\mathbf{U}$ can be defined as:
+\begin{align}
+\mathbf{U} = \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
+0 & \mathbf{U}_1 & 0 & 0 & 0 & 0 \\
+0 & 0 & \mathbf{U}_1 & 0 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & \mathbf{U}_2 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & \mathbf{U}_3 & 0 \\
+0 & 0 & 0 & 0 & 0 & \mathbf{U}_3
 \end{array} \right)
 \end{align}
-A specific block $\mathbf{U}_i \in \mathbb{R}^{n_i \times m_i}$ is applied to each variable:
-\begin{align}
-\mathbf{U} = \left( \begin{array}{c}
-\mathbf{U}_1 \\
-\vdots \\
-\mathbf{U}_p
-\end{array} \right) \mathbf{S}^\mathrm{c}
-\end{align}
-The resulting localization matrix is $\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T}$ with each auto- or cross-localization block given by: 
-\begin{align}
-\mathbf{L}_{ij} = \mathbf{U}_i \mathbf{S}^\mathrm{c}_i \mathbf{S}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T}
-\end{align}
-
-\subsection{Interpolation error}
-We assume that every interpolation $\mathbf{S}^\mathrm{s}$ or $\mathbf{S}^\mathrm{c}$ can be expanded as $\mathbf{S} = \mathbf{T} + \mathbf{E}$ where $\mathbf{T}$ is the "true" interpolation, i.e. the best we can get with a linear operator, and $\mathbf{E} = \mathbf{S} - \mathbf{T}$ the resulting error. 
 Thus:
-\begin{itemize}
-\item For the state grid interpolation with specific blocks:
 \begin{align}
-\mathbf{L}_{ij} & = \mathbf{S}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{S}_j^{\mathrm{s} \mathrm{T}} \nonumber \\
-& = \mathbf{T}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{T}_j^{\mathrm{s} \mathrm{T}} + \mathbf{E}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{T}_j^{\mathrm{s} \mathrm{T}} + \mathbf{T}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{E}_j^{\mathrm{s} \mathrm{T}} + \mathbf{E}^\mathrm{s}_i \overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T} \mathbf{E}_j^{\mathrm{s} \mathrm{T}}
+\mathbf{L} = \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 & 0 & 0 \\
+0 & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 & 0 \\
+0 & 0 & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & 0 \\
+0 & 0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
+\end{array} \right)
 \end{align}
-and similarly for the state grid interpolation with a common block.
-\item For the control grid interpolation:
-\begin{align}
-\mathbf{L}_{ij} & = \mathbf{U}_i \mathbf{S}^\mathrm{c}_i \mathbf{S}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T} \nonumber \\
-& = \mathbf{U}_i \mathbf{T}^\mathrm{c}_i \mathbf{T}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T} + \mathbf{U}_i \mathbf{E}^\mathrm{c}_i \mathbf{T}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T} + \mathbf{U}_i \mathbf{T}^\mathrm{c}_i \mathbf{E}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T} + \mathbf{U}_i \mathbf{E}^\mathrm{c}_i \mathbf{E}_j^{\mathrm{c} \mathrm{T}} \mathbf{U}_j^\mathrm{T}
-\end{align}
-\end{itemize}
-Assuming that interpolation errors are random with a short correlation length-scale, the control grid interpolation looks like a better option since a smoothing is always applied as the last operator. However, even with the state grid interpolation: 
-\begin{itemize}
-\item either the interpolation error is smoothed in subsequent operators,
-\item or the interpolation error is itself applied on smoothed fields at high-resolution, leading to small interpolation errors.
-\end{itemize}
-As a conclusion, we don't think that interpolation error is a major issue that should favor one approach or the other.
+In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q P_q m_q$
 
-\subsection{Localization amplitude}
-We denote $\overbar{\mathbf{u}}$ the k$^\textrm{th}$ column of $\overbar{\mathbf{U}}_i$ and $\overbar{\mathbf{u}}'$ the k$^\textrm{th}$ column of $\overbar{\mathbf{U}}_j$. The k$^\textrm{th}$ diagonal coefficient of $\overbar{\mathbf{U}}_i \overbar{\mathbf{U}}_j^\mathrm{T}$ is given by $\langle \overbar{\mathbf{u}},\overbar{\mathbf{u}}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality imposes that:
+\subsection{Duplicated localization}
+It is possible to define the cross-localization between the variables of a same group as duplicates of the diagonal localization, by defining $\mathbf{U}$ as: 
 \begin{align}
-\vert \langle \overbar{\mathbf{u}},\overbar{\mathbf{u}}' \rangle \vert & \le \sqrt{\langle \overbar{\mathbf{u}},\overbar{\mathbf{u}} \rangle \langle \overbar{\mathbf{u}}',\mathbf{u}' \rangle}
+\mathbf{U} & = \left( \begin{array}{c|c|c}
+\mathbf{U}_1 & 0 & 0 \\
+\mathbf{U}_1 & 0 & 0 \\
+\mathbf{U}_1 & 0 & 0 \\[0.3ex]
+\hline
+0 & \mathbf{U}_2 & 0 \\[0.3ex]
+\hline
+0 & 0 & \mathbf{U}_3 \\
+0 & 0 & \mathbf{U}_3
+\end{array} \right) \nonumber \\
+& = \left( \begin{array}{c|c|c}
+\mathbf{I}_1 & 0 & 0 \\
+\mathbf{I}_1 & 0 & 0 \\
+\mathbf{I}_1 & 0 & 0 \\[0.3ex]
+\hline
+0 & \mathbf{I}_2 & 0 \\[0.3ex]
+\hline
+0 & 0 & \mathbf{I}_3 \\
+0 & 0 & \mathbf{I}_3
+\end{array} \right)
+\left( \begin{array}{c|c|c}
+\mathbf{U}_1 & 0 & 0 \\[0.3ex]
+\hline
+0 & \mathbf{U}_2 & 0 \\[0.3ex]
+\hline
+0 & 0 & \mathbf{U}_3
+\end{array} \right)
 \end{align}
-Thus, the cross-localization amplitude between variables $i$ and $j$ is necessarily smaller than the geometric mean of the auto-localization amplitudes for variables $i$ and $j$. Besides, the more the vectors $\overbar{\mathbf{u}}$ and $\overbar{\mathbf{u}}'$ have different shapes, the smaller their inner product and the smaller the cross-localization amplitude.
+where $\mathbf{I}_q \in \mathbf{R}^{n_q,n_q}$ is the identity matrix of size $n_q$. Thus:
+\begin{align}
+\mathbf{L} = \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} \\
+0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
+\end{array} \right)
+\end{align}
+In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q m_q$
+
+\subsection{Duplicated and weighted localization}
+A variant of the previous case uses group-specific lower triangular matrices $\mathbf{S}^q \in \mathbb{R}^{P_q \times P_q}$ to define $\mathbf{U}$ as: 
+\begin{align}
+\mathbf{U} & = \left( \begin{array}{ccc|c|ccc}
+S^1_{1,1} \mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
+S^1_{2,1} \mathbf{U}_1 & S^1_{2,2} \mathbf{U}_1 & 0 & 0 & 0 & 0 \\
+S^1_{3,1} \mathbf{U}_1 & S^1_{3,2} \mathbf{U}_1 & S^1_{3,3} \mathbf{U}_1 & 0 & 0 & 0 \\
+\hline
+0 & 0 & 0 & S^2_{1,1} \mathbf{U}_2 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & S^3_{1,1} \mathbf{U}_3 & 0 \\
+0 & 0 & 0 & 0 & S^3_{2,1} \mathbf{U}_3 & S^3_{2,2} \mathbf{U}_3
+\end{array} \right) \nonumber \\
+& = \left( \begin{array}{ccc|c|ccc}
+S^1_{1,1} \mathbf{I}_1 & 0 & 0 & 0 & 0 & 0 \\
+S^1_{2,1} \mathbf{I}_1 & S^1_{2,2} \mathbf{I}_1 & 0 & 0 & 0 & 0 \\
+S^1_{3,1} \mathbf{I}_1 & S^1_{3,2} \mathbf{I}_1 & S^1_{3,3} \mathbf{I}_1 & 0 & 0 & 0 \\
+\hline
+0 & 0 & 0 & S^2_{1,1} \mathbf{I}_2 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & S^3_{1,1} \mathbf{I}_3 & 0 \\
+0 & 0 & 0 & 0 & S^3_{2,1} \mathbf{I}_3 & S^3_{2,1} \mathbf{I}_3
+\end{array} \right) \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
+0 & \mathbf{U}_1 & 0 & 0 & 0 & 0 \\
+0 & 0 & \mathbf{U}_1 & 0 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & \mathbf{U}_2 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & \mathbf{U}_3 & 0 \\
+0 & 0 & 0 & 0 & 0 & \mathbf{U}_3
+\end{array} \right)
+\end{align}
+Thus:
+\begin{align}
+\mathbf{L} = \left( \begin{array}{ccc|c|cc}
+W^1_{1,1} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{1,2} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{1,3} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\
+W^1_{2,1} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{2,2} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{2,3} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\
+W^1_{3,1} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{3,2} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{3,3} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & 0 & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & W^2_{1,1} \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & 0 & 0 \\[0.3ex]
+\hline
+0 & 0 & 0 & 0 & W^3_{1,1} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & W^3_{1,2} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} \\
+0 & 0 & 0 & 0 & W^3_{2,1} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & W^3_{2,2} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
+\end{array} \right)
+\end{align}
+where $\mathbf{W}^q = \mathbf{S}^q \mathbf{S}^{q\mathrm{T}}$ provides the weights applied to each covariance between variables within the group $q$. In practice, it is easier to set $\mathbf{W}^q$ and to compute $\mathbf{S}^q$ using a Cholesky decomposition. It also seems reasonable to set the diagonal elements of $\mathbf{W}^q$ to one, even if it is not mandatory.\\
+$  $\\
+In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q P_q m_q$
+
+\subsection{Multivariate localization}
+For the case where the cross-localization between variables is implicitly given as the product of square-roots, $\mathbf{U}$ can be reduced to a column:
+\begin{align}
+\mathbf{U} & = \left( \begin{array}{c}
+\mathbf{U}_1 \\
+\mathbf{U}_1 \\
+\mathbf{U}_1 \\[0.3ex]
+\hline
+\mathbf{U}_2 \\[0.3ex]
+\hline
+\mathbf{U}_3 \\
+\mathbf{U}_3
+\end{array} \right) \nonumber \\
+& = \left( \begin{array}{c|c|c}
+\mathbf{I}_1 & 0 & 0 \\
+\mathbf{I}_1 & 0 & 0 \\
+\mathbf{I}_1 & 0 & 0 \\[0.3ex]
+\hline
+0 & \mathbf{I}_2 & 0 \\[0.3ex]
+\hline
+0 & 0 & \mathbf{I}_3 \\
+0 & 0 & \mathbf{I}_3
+\end{array} \right)
+\left( \begin{array}{c}
+\mathbf{U}_1 \\[0.3ex]
+\hline
+\mathbf{U}_2 \\[0.3ex]
+\hline
+\mathbf{U}_3
+\end{array} \right)
+\end{align}
+An additional assumption is required here: the size of the group sub-vectors must be the same for all groups, i.e. $m_1 = ... = m_Q = \overbar{m}$. Thus:
+\begin{align}
+\mathbf{L} = \left( \begin{array}{ccc|c|cc}
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} \\
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} \\
+\mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} \\[0.3ex]
+\hline
+\mathbf{U}_2 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_2 \mathbf{U}_3^\mathrm{T} \\[0.3ex]
+\hline
+\mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} \\
+\mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
+\end{array} \right)
+\end{align}
+In this case, the total control vector size is $\displaystyle m = \overbar{m}$.\\
+$  $\\
+The amplitude of cross-localization is not one in this case. For $1 \le q,q' \le Q$, we denote $\mathbf{u}$ the k$^\textrm{th}$ column of $\mathbf{U}_q$ and $\mathbf{u}'$ the k$^\textrm{th}$ column of $\mathbf{U}_{q'}$. The k$^\textrm{th}$ diagonal coefficient of $\mathbf{U}_q \mathbf{U}_{q'}^\mathrm{T}$ is given by $\langle \mathbf{u},\mathbf{u}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality requires that:
+\begin{align}
+\vert \langle \mathbf{u},\mathbf{u}' \rangle \vert & \le \sqrt{\langle \mathbf{u},\mathbf{u} \rangle \langle \mathbf{u}',\mathbf{u}' \rangle}
+\end{align}
+Thus, the cross-localization amplitude between groups $q$ and $q'$ is necessarily smaller than the geometric mean of the auto-localization amplitudes for groups $q$ and $q'$. Besides, the more the vectors $\mathbf{u}$ and $\mathbf{u}'$ have different shapes, the smaller their inner product and the smaller the cross-localization amplitude.
 \begin{center}
 \includegraphics[width=\linewidth]{convolution_exp.pdf}
 \captionof{figure}{1D illustration of the product of two localization square-root, with Gaussian localization functions. The dashed black line shows the function amplitude, while the solid red line shows the function length-scale.}
 \end{center}
-$  $\\
-\textbf{Advantages:} well-adapted for large differences between variables length-scales.\\
-\textbf{Drawbacks:} no control on the cross-localization amplitude.\\
-\textbf{Cost:} $p$ applications of $\overbar{\mathbf{U}}_i$.
-
-\section{Common block}
-
-\subsection{Basic method}
-A third method is to apply a common block $\overbar{\mathbf{U}} \in \mathbb{R}^{\overbar{n} \times m}$ to all variables, with a state grid interpolation:
-\begin{align}
-\mathbf{U} = \mathbf{S}^\mathrm{s} \left( \begin{array}{c}
-\overbar{\mathbf{U}} \\
-\vdots \\
-\overbar{\mathbf{U}}
-\end{array} \right) = \mathbf{S}^\mathrm{s} \left( \begin{array}{c}
-\mathbf{I}_{\overbar{n}} \\
-\vdots \\
-\mathbf{I}_{\overbar{n}} \\
-\end{array} \right) \overbar{\mathbf{U}}
-\end{align}
-where $\mathbf{I}_{\overbar{n}} \in \mathbb{R}^{\overbar{n} \times \overbar{n}}$ is the identity matrix. It should be noted that to apply $\mathbf{U}$, the matrix $\overbar{\mathbf{U}}$ needs to be applied only once. The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \mathbf{S}^\mathrm{s} \left( \begin{array}{ccc}
-\overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} & \cdots & \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} \\
-\vdots & \ddots & \vdots  \\
-\overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} & \cdots & \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T}
-\end{array} \right) \mathbf{S}^{\mathrm{s} \mathrm{T}}
-\end{align}
-In this case, each auto- or cross-localization block is given by: 
-\begin{align}
-\mathbf{L}_{ij} = \mathbf{S}^\mathrm{s}_i \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} \mathbf{S}_j^{\mathrm{s} \mathrm{T}}
-\end{align}
-It should be noted that this approach is inconsistent with the optimal linear filtering theory. Indeed, the cross-correlation between different variables, even at zero separation, is lower than 1 (i.e. the value for auto-correlations). Thus, the cross-localization should be lower than the auto-localization at zero separation, whereas $\left[\overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T}\right]_{ii}$ is applied in both case.\\
-$  $\\
-\textbf{Advantages:} lower cost.\\
-\textbf{Drawbacks:} ill-adapted for large differences between variables length-scales and/or for small cross-correlations (sampling noise is kept).\\
-\textbf{Cost:} one application of $\overbar{\mathbf{U}}$.
-
-\subsection{Weighted variant}
-A fourth method is to apply a lower triangular square-root of weighted common blocks $\overbar{\mathbf{U}} \in \mathbb{R}^{\overbar{n} \times m}$, with a state grid interpolation:
-\begin{align}
-\mathbf{U} & = \mathbf{S}^\mathrm{s} \left( \begin{array}{cccc}
-Q_{1,1} \overbar{\mathbf{U}} & 0 & \cdots & 0 \\
-Q_{2,1} \overbar{\mathbf{U}} & Q_{2,2} \overbar{\mathbf{U}} & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-Q_{p,1} \overbar{\mathbf{U}} & \cdots & Q_{p,p-1} \overbar{\mathbf{U}} & Q_{p,p} \overbar{\mathbf{U}}
-\end{array} \right) \\
- & = \mathbf{S}^\mathrm{s} \left( \begin{array}{cccc}
-Q_{1,1} \mathbf{I}_{\overbar{n}} & 0 & \cdots & 0 \\
-Q_{2,1} \mathbf{I}_{\overbar{n}} & Q_{2,2} \mathbf{I}_{\overbar{n}} & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-Q_{p,1} \mathbf{I}_{\overbar{n}} & \cdots & Q_{p,p-1} \mathbf{I}_{\overbar{n}} & Q_{p,p} \mathbf{I}_{\overbar{n}}
-\end{array} \right) \left( \begin{array}{cccc}
-\overbar{\mathbf{U}} & 0 & \cdots & 0 \\
-0 & \overbar{\mathbf{U}} & \ddots & \vdots \\
-\vdots & \ddots & \ddots & 0 \\
-0 & \cdots & 0 & \overbar{\mathbf{U}} 
-\end{array} \right)
-\end{align}
-where $\mathbf{I}_{\overbar{n}} \in \mathbb{R}^{\overbar{n} \times \overbar{n}}$ is the identity matrix. It should be noted that to apply $\mathbf{U}$, the matrix $\overbar{\mathbf{U}}$ needs to be applied $p$ times. The resulting localization matrix is:
-\begin{align}
-\mathbf{L} = \mathbf{U} \mathbf{U}^\mathrm{T} = \mathbf{S}^\mathrm{s} \left( \begin{array}{ccc}
-W_{1,1} \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} & \cdots & W_{1,p} \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} \\
-\vdots & \ddots & \vdots  \\
-W_{p,1} \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} & \cdots & W_{p,p} \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T}
-\end{array} \right) \mathbf{S}^{\mathrm{s} \mathrm{T}}
-\end{align}
-where $\mathbf{W} = \mathbf{Q} \mathbf{Q}^\textrm{T}$. In this case, each auto- or cross-localization block is given by: 
-\begin{align}
-\mathbf{L}_{ij} = W_{i,j} \mathbf{S}^\mathrm{s}_i \overbar{\mathbf{U}} \overbar{\mathbf{U}}^\mathrm{T} \mathbf{S}_j^{\mathrm{s} \mathrm{T}}
-\end{align}
-The actual process would be reversed: first define $\mathbf{W}$, and its square-root decomposition $\mathbf{Q}$. Since $\mathbf{W}$ and $\mathbf{Q}$ are square matrices of size $p$, a Cholesky decomposition can work.\\
-$  $\\
-\textbf{Advantages:} precise control on the cross-localization amplitude.\\
-\textbf{Drawbacks:} ill-adapted for large differences between variables length-scales.\\
-\textbf{Cost:} $p$ applications of $\overbar{\mathbf{U}}$.
-
-\section{Applications}
-The approaches above can be used to localize 3D variables located on different points of the grid (e.g. Arakawa C grid).\\
-$  $\\
-It can also work to maintain a non-zero cross-localization between 3D and 2D variables, which is needed if they are correlated. The usual practice is to build an extended 3D grid with one more level at the bottom, and to copy the 2D variable on this extra level. The formalism described above can be used to understand this approach: the state grid interpolation is a simple copy of the 2D variable on the extra level, and a copy of the 3D variable on the remaining levels above.\\
-$  $\\
-Using a common block $\overbar{\mathbf{U}}$ can lead to some issues when the 3D and 2D variables have very different length-scales (e.g. temperature and surface pressure). However, we can also use the state grid interpolation with two specific blocks $\overbar{\mathbf{U}}_{3D}$ and $\overbar{\mathbf{U}}_{2D}$, which are both defined on the extended grid.\\
-$  $\\
-The control grid interpolation approach is not suitable to cross-localize 3D and 2D variables, since it is not possible to define cross-localizations on their specific grids.
-
-\clearpage
 
 \bibliographystyle{mybib-en}
 \bibliography{multivariate_localization}
