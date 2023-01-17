@@ -115,12 +115,12 @@ The state vector $\mathbf{x} \in \mathbb{R}^n$ is split into $Q$ concatenated su
 As a consequence:
 \begin{itemize}
 \item The total number of variable sub-vectors is $\displaystyle P = \sum_{q=1}^Q P_q$.
-\item Each group sub-vector $\mathbf{x}_q$ has a size $P_q n_q$, so the total state vector size is $n = \sum_{q=1}^Q P_q n_q$.
+\item Each group sub-vector $\mathbf{x}_q$ has a size $P_q n_q$, so the total state vector size is $n = \displaystyle \sum_{q=1}^Q P_q n_q$.
 \end{itemize}
 The main idea behind this distribution of variables into groups is to apply the same localization to all variables within a given group.\\
 
 \subsection{Illustration setup}
-An simple example will be used as illustration throughout this note. We define a vector $\mathbf{x}$ with $Q = 3$ groups, where $P_1 = 3$, $P_2 = 1$ and $P_3 = 2$:
+A simple example will be used as an illustration throughout this note. We define a vector $\mathbf{x}$ with $Q = 3$ groups, where $P_1 = 3$, $P_2 = 1$ and $P_3 = 2$:
 \begin{align}
 \begin{array}{c@{}c}
 \mathbf{x} = \left( \begin{array}{c}
@@ -183,7 +183,7 @@ In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q P
 \section{Block-univariate localization}
 
 \subsection{With duplicates}
-It is possible to set the cross-localization between the variables of a same group as duplicates of the diagonal localization, by defining $\mathbf{U}$ as: 
+It is possible to define the cross-localization between the variables of a same group as duplicates of the diagonal localization, by defining $\mathbf{U}$ as: 
 \begin{align}
 \mathbf{U} & = \left( \begin{array}{c|c|c}
 \mathbf{U}_1 & 0 & 0 \\
