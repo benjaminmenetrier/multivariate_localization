@@ -117,7 +117,6 @@ As a consequence:
 \item The total number of variables is $\displaystyle P = \sum_{q=1}^Q P_q$.
 \item Each group $\mathbf{x}_q$ has a size $P_q n_q$, so the full state vector size is $n = \displaystyle \sum_{q=1}^Q P_q n_q$.
 \end{itemize}
-The main idea behind this distribution of variables into groups is to apply the same localization to all variables within a given group.\\
 
 \subsection{Illustration setup}
 A simple example will be used as an illustration throughout this note. We define a vector $\mathbf{x}$ with $Q = 3$ groups, where $P_1 = 3$, $P_2 = 1$ and $P_3 = 2$:
@@ -145,16 +144,19 @@ The localization matrix $\mathbf{L} \in \mathbb{R}^{n \times n}$ is applied to $
 \begin{align}
 \mathbf{L} = \mathbf{UU}^\textrm{T}
 \end{align}
-where $\mathbf{U} \in \mathbb{R}^{n \times m}$ is called a ``square-root'' of the localization matrix $\mathbf{L}$. The control vector $\mathbf{v} \in \mathbb{R}^m$ is such that:
+where $\mathbf{U} \in \mathbb{R}^{n \times m}$ is called a ``square-root'' of the localization matrix $\mathbf{L}$. The number of colums $m$ of the square-root $\mathbf{U}$ can be smaller or larger than the number of lines $n$. The control vector $\mathbf{v} \in \mathbb{R}^m$ is such that:
 \begin{align}
 \mathbf{x} = \mathbf{U} \mathbf{v}
 \end{align}
-We can define a square-root component $\mathbf{U}_q \in \mathbb{R}^{n_q \times m_q}$ for each group.
+We can define a component $\mathbf{U}_q \in \mathbb{R}^{n_q \times m_q}$ for each group. The relationship between the number of columns $m_q$ of each component $\mathbf{U}_q$ and the total number of columns $m$ of $\mathbf{U}$ depends on the multivariate strategy.\\
+$  $\\
+The main idea behind this distribution of variables into groups is to apply a localization based on the same component to all the variables pairs within a given group. Thus, the number of distinct component can be reduced if the number of groups is smaller than the number of variables.
 
-\section{Possible implementations}
+\section{Zero cross-localization between groups}
+For the first three multivariate strategies, cross-correlations between groups are cut off (i.e. cross-localization is zero). Localization is non-zero only for auto-correlations and cross-correlations between variables of the same group.
 
 \subsection{Univariate localization}
-For the case where there is no cross-localization between variables, the square-root $\mathbf{U}$ can be defined as:
+For the case where even cross-correlations between variables of the same group are cut off, the square-root $\mathbf{U}$ can be defined as:
 \begin{align}
 \mathbf{U} = \left( \begin{array}{ccc|c|cc}
 \mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
@@ -249,7 +251,7 @@ S^1_{3,1} \mathbf{I}_1 & S^1_{3,2} \mathbf{I}_1 & S^1_{3,3} \mathbf{I}_1 & 0 & 0
 0 & 0 & 0 & S^2_{1,1} \mathbf{I}_2 & 0 & 0 \\[0.3ex]
 \hline
 0 & 0 & 0 & 0 & S^3_{1,1} \mathbf{I}_3 & 0 \\
-0 & 0 & 0 & 0 & S^3_{2,1} \mathbf{I}_3 & S^3_{2,1} \mathbf{I}_3
+0 & 0 & 0 & 0 & S^3_{2,1} \mathbf{I}_3 & S^3_{2,2} \mathbf{I}_3
 \end{array} \right) \left( \begin{array}{ccc|c|cc}
 \mathbf{U}_1 & 0 & 0 & 0 & 0 & 0 \\
 0 & \mathbf{U}_1 & 0 & 0 & 0 & 0 \\
@@ -274,12 +276,15 @@ W^1_{3,1} \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & W^1_{3,2} \mathbf{U}_1 \mathbf{
 0 & 0 & 0 & 0 & W^3_{2,1} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & W^3_{2,2} \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
 \end{array} \right)
 \end{align}
-where $\mathbf{W}^q = \mathbf{S}^q \mathbf{S}^{q\mathrm{T}}$ provides the weights applied to each covariance between variables within the group $q$. In practice, it is easier to set $\mathbf{W}^q$ and to compute $\mathbf{S}^q$ using a Cholesky decomposition. It also seems reasonable to set the diagonal elements of $\mathbf{W}^q$ to one, even if it is not mandatory.\\
+where $\mathbf{W}^q = \mathbf{S}^q \mathbf{S}^{q\mathrm{T}}$ provides the weights applied to each covariance between variables within the group $q$. In practice, it is easier to set $\mathbf{W}^q$ and to compute $\mathbf{S}^q$ using a Cholesky decomposition. It also seems reasonable to set the diagonal elements of $\mathbf{W}^q$ to one.\\
 $  $\\
 In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q P_q m_q$
 
+\section{Implicit cross-localization between groups}
+For the last multivariate strategy, cross-correlations between groups are defined implicitly as the product of components of both groups.
+
 \subsection{Crossed localization}
-For the case where the cross-localization between variables is implicitly given as the product of square-roots, $\mathbf{U}$ can be reduced to a column:
+In this case, $\mathbf{U}$ is reduced to a column:
 \begin{align}
 \mathbf{U} & = \left( \begin{array}{c}
 \mathbf{U}_1 \\
@@ -309,7 +314,7 @@ For the case where the cross-localization between variables is implicitly given 
 \mathbf{U}_3
 \end{array} \right)
 \end{align}
-An additional assumption is required here: the size of the group sub-vectors must be the same for all groups, i.e. $m_1 = ... = m_Q = \overbar{m}$. Thus:
+An additional assumption is required here: the components $\mathbf{U}_q$ must all have the same number of columns: $m_1 = ... = m_Q = \overbar{m}$. Thus:
 \begin{align}
 \mathbf{L} = \left( \begin{array}{ccc|c|cc}
 \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} \\
@@ -323,7 +328,8 @@ An additional assumption is required here: the size of the group sub-vectors mus
 \end{array} \right)
 \end{align}
 In this case, the total control vector size is $\displaystyle m = \overbar{m}$.\\
-$  $\\
+
+\subsection{Cross-localization amplitude}
 The amplitude of cross-localization is not one in this case. For $1 \le q,q' \le Q$, we denote $\mathbf{u}$ the k$^\textrm{th}$ column of $\mathbf{U}_q$ and $\mathbf{u}'$ the k$^\textrm{th}$ column of $\mathbf{U}_{q'}$. The k$^\textrm{th}$ diagonal coefficient of $\mathbf{U}_q \mathbf{U}_{q'}^\mathrm{T}$ is given by $\langle \mathbf{u},\mathbf{u}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality requires that:
 \begin{align}
 \vert \langle \mathbf{u},\mathbf{u}' \rangle \vert & \le \sqrt{\langle \mathbf{u},\mathbf{u} \rangle \langle \mathbf{u}',\mathbf{u}' \rangle}
