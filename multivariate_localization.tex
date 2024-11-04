@@ -85,7 +85,7 @@
 \maketitle
 \begin{center}
 Documentation for the code "BUMP", distributed under the CeCILL-C license.\\
-Copyright \copyright 2015-... UCAR, CERFACS, METEO-FRANCE and IRIT
+Copyright \copyright 2015-... UCAR, CERFACS, METEO-FRANCE, IRIT and Meteorologisk Institutt
 \end{center}
 
 \tableofcontents
@@ -227,7 +227,7 @@ where $\mathbf{I}_q \in \mathbf{R}^{n_q,n_q}$ is the identity matrix of size $n_
 0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} \\
 0 & 0 & 0 & 0 & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_3 \mathbf{U}_3^\mathrm{T}
 \end{array} \right)
-\end{align}
+\end{align}*
 In this case, the total control vector size is $\displaystyle m = \sum_{q=1}^Q m_q$
 
 \subsection{Duplicated and weighted localization}
@@ -339,6 +339,78 @@ Thus, the cross-localization amplitude between groups $q$ and $q'$ is necessaril
 \includegraphics[width=\linewidth]{convolution_exp.pdf}
 \captionof{figure}{1D illustration of the product of two localization square-root, with Gaussian localization functions. The dashed black line shows the function amplitude, while the solid red line shows the function length-scale.}
 \end{center}
+
+\subsection{Mixing 3D and 2D variables}
+In many applications, the state vector contains both 3D and 2D variables. To use the crossed method in this case, it is necessary to consider the 2D variables as 3D variables with only one level containing meaningful data (the first or the last level in general) and the other levels set to zero.\\
+$  $\\
+For sake of simplicity, we assume here that group 1 contains one 3D variable and group 2 contains one 2D variable. We also assume that both control variable $\mathbf{x}$ and control vector $\mathbf{v}$ can be split into $K$ components, each one handling one vertical level:
+\begin{align}
+\mathbf{x} = \left( \begin{array}{c}
+\mathbf{x}_{1,k=1} \\[1ex]
+\vdots \\
+\mathbf{x}_{1,k=K} \\[1ex]
+\hline
+\mathbf{x}_{2}
+\end{array} \right) \ \text{ and } \ \mathbf{v} = \left( \begin{array}{c}
+\mathbf{v}_{k=1} \\[1ex]
+\vdots \\
+\mathbf{v}_{k=K} \\[1ex]
+\end{array} \right)
+\end{align}
+We can define an extended control variable:
+\begin{align}
+\mathbf{x}' = \left( \begin{array}{c}
+\mathbf{x}_{1,k=1} \\[1ex]
+\vdots \\
+\mathbf{x}_{1,k=K} \\[1ex]
+\hline
+\mathbf{x}'_{2,k=1} \\[1ex]
+\vdots \\
+\mathbf{x}'_{2,k=K} \\[1ex]
+\end{array} \right) = \mathbf{E} \mathbf{x}
+\end{align}
+where $\mathbf{E}$ is the extension operator padding with zeros, so that both sub-vectors have the same size. In general:
+\begin{itemize}
+\item either $\mathbf{x}'_{2,k=1} = \mathbf{x}_2$ and 
+$\mathbf{x}'_{2,k=2}$ to $\mathbf{x}'_{2,k=K}$ are set to zero,
+\item or $\mathbf{x}'_{2,k=K} = \mathbf{x}_2$ and 
+$\mathbf{x}'_{2,k=1}$ to $\mathbf{x}'_{2,k=K-1}$ are set to zero.
+\end{itemize}
+The adjoint of $\mathbf{E}$, denoted $\mathbf{E}^\mathrm{T}$, is thus a reduction operator removing the zeroed levels from the extended control variable $\mathbf{x}'$ to yield the control variable $\mathbf{x}$:
+\begin{align}
+\mathbf{x} = \mathbf{E}^\mathrm{T} \mathbf{E} \mathbf{x}
+\end{align}
+We define an extended square-root $\mathbf{U}'_2$:
+\begin{align}
+\mathbf{U}'_2 = \left( \begin{array}{cccc}
+\mathbf{U}_2 & 0 & \dots & 0 \\[1ex]
+0 & 0 & \dots & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & 0 & \dots & 0
+\end{array} \right) \ \text{ or } \ \mathbf{U}'_2 = \left( \begin{array}{cccc}
+0 & \dots & 0 & 0\\
+\vdots & \ddots & \vdots & \vdots\\
+0 & \dots & 0 & 0 \\
+0 & \dots & 0 & \mathbf{U}_2
+\end{array} \right)
+\end{align}
+depending on the location of the 2D level in the 3D grid, at level 1 or $K$, respectively. The extended square-root $\mathbf{U}$ is then given by:
+\begin{align}
+\mathbf{U}' = \left( \begin{array}{c}
+\mathbf{U}_1 \\[1ex]
+\hline
+\mathbf{U}'_2 \\[1ex]
+\end{array} \right)
+\end{align}
+Finally, we get
+\begin{align}
+\mathbf{x}' = \mathbf{U}' \mathbf{v}
+\end{align}
+so we can conclude that:
+\begin{align}
+\mathbf{U} = \mathbf{E}^\mathrm{T} \mathbf{U}'
+\end{align}
+In practice, the operator $\mathbf{E}^\mathrm{T} \mathbf{U}'$ can be optimized to avoid the storage in memory of the extended variable $\mathbf{x}'$, keeping  the relevant level only for the 2D variables.
 
 \bibliographystyle{mybib-en}
 \bibliography{multivariate_localization}
