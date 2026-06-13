@@ -314,7 +314,7 @@ In this case, $\mathbf{U}$ is reduced to a column:
 \mathbf{U}_3
 \end{array} \right)
 \end{align}
-An additional assumption is required here: the components $\mathbf{U}_q$ must all have the same number of columns: $m_1 = ... = m_Q = \overbar{m}$. Thus:
+An additional property is required here: the control vectors of all the components $\mathbf{U}_q$ must be expressed in the same basis (see next section for details). As an obvious consequence, all the components have the same number of columns: $m_1 = ... = m_Q = \overbar{m}$. Thus:
 \begin{align}
 \mathbf{L} = \left( \begin{array}{ccc|c|cc}
 \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_1^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_2^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} & \mathbf{U}_1 \mathbf{U}_3^\mathrm{T} \\
@@ -328,6 +328,80 @@ An additional assumption is required here: the components $\mathbf{U}_q$ must al
 \end{array} \right)
 \end{align}
 In this case, the total control vector size is $\displaystyle m = \overbar{m}$.\\
+
+\subsection{Same basis requirement}
+
+In order to get valid cross-products of square-roots like $\mathbf{U}_1 \mathbf{U}_2^\mathrm{T}$, the control vectors of all the components $\mathbf{U}_q$ must be expressed in the basis: \textbf{having the same number of columns ($m_1 = m_2$) is a necessary condition, but not a sufficient one}, as it can be demonstrated with a simple example.\\
+$  $\\
+Let's build the simplest possible system:
+\begin{itemize}
+\item Two variables are defined on two grid-points: $\mathbf{x}_1 \in \mathbb{R}^2$ and $\mathbf{x}_2 \in \mathbb{R}^2$.
+\item The auto-localization matrices for these variables are:
+\begin{align}
+\mathbf{L}_1 = \left( \begin{array}{cc}
+1 & 0 \\
+0 & 1
+\end{array} \right) \text{ and } \mathbf{L}_2 = \left( \begin{array}{cc}
+4 & 0 \\
+0 & 4
+\end{array} \right) 
+\end{align}
+\end{itemize}
+Thus, the most obvious localization square-root matrices, both expressed in the same control vector basis, are:
+\begin{align}
+\mathbf{U}_1 = \left( \begin{array}{cc}
+1 & 0 \\
+0 & 1
+\end{array} \right) \text{ and } \mathbf{U}_2 = \left( \begin{array}{cc}
+2 & 0 \\
+0 & 2
+\end{array} \right) 
+\end{align}
+With the crossed strategy, the resulting localization matrix is:
+\begin{align}
+\mathbf{L} = \left( \begin{array}{c}
+\mathbf{U}_1 \\
+\hline
+\mathbf{U}_2
+\end{array} \right) \left( \begin{array}{c|c}
+\mathbf{U}_1^\mathrm{T} & \mathbf{U}_2^\mathrm{T}
+\end{array} \right) = \left( \begin{array}{cc|cc}
+1 & 0 & 2 & 0 \\
+0 & 1 & 0 & 2 \\
+\hline
+2 & 0 & 4 & 0 \\
+0 & 2 & 0 & 4
+\end{array} \right) 
+\end{align}
+The cross-localization matrices $\mathbf{U}_1 \mathbf{U}_2^\mathrm{T}$ and $\mathbf{U}_2 \mathbf{U}_1^\mathrm{T}$ look relevant: both auto-localizations $\mathbf{L}_1$ and $\mathbf{L}_2$ remove the covariances between the two grid-points, and so do the implicit cross-localization matrices.\\
+$  $\\
+However, it is possible to introduce any unitary matrix $\mathbf{R}$ such as $\mathbf{R} \mathbf{R}^\mathrm{T} = \mathbf{I}$ to define another valid square-root of $\mathbf{L}_2$: $\widetilde{\mathbf{U}}_2 = \mathbf{U}_2 \mathbf{R}$. This is a simple orthogonal change of basis in the space of the control vector $\mathbf{v}_2$. It is easy to check that $\widetilde{\mathbf{L}}_2 = \widetilde{\mathbf{U}}_2 \widetilde{\mathbf{U}}_2^\mathrm{T} = \mathbf{L}_2$. An obvious example of such a unitary matrix is:
+\begin{align}
+\mathbf{R} = \left( \begin{array}{cc}
+0 & 1 \\
+1 & 0
+\end{array} \right) 
+\end{align}
+which is just a switch of the two grid-points. In this case, the resulting localization matrix is:
+\begin{align}
+\widetilde{\mathbf{L}} & = \left( \begin{array}{c}
+\mathbf{U}_1 \\
+\hline \\[-0.4cm]
+\widetilde{\mathbf{U}}_2
+\end{array} \right) \left( \begin{array}{c|c}
+\mathbf{U}_1^\mathrm{T} & \widetilde{\mathbf{U}}_2^\mathrm{T}
+\end{array} \right) \nonumber \\
+& = \left( \begin{array}{cc|cc}
+1 & 0 & 0 & 2 \\
+0 & 1 & 2 & 0 \\
+\hline
+0 & 2 & 4 & 0 \\
+2 & 0 & 0 & 4
+\end{array} \right) 
+\end{align}
+Now, the cross-localization matrices $\mathbf{U}_1 \mathbf{U}_2^\mathrm{T}$ and $\mathbf{U}_2 \mathbf{U}_1^\mathrm{T}$ look wrong: both keep the covariances between the two grid-points and removes the covariances of the two grid-points with themselves. The introduction of $\mathbf{R}$ has no impact on the auto-localizations, but it has a dramatic (and wrong) effect on the implicit cross-localizations.\\
+$ $\\
+A practical application of this constraint concerns spectral methods. In this case, the vertical structure of $\mathbf{U}_q$ is generally built from the eigendecomposition of the vertical structure of $\mathbf{L}_q$. But if this vertical structure differs among the components $\mathbf{L}_1, \dots, \mathbf{L}_Q$, then the eigenvector bases used to define $\mathbf{U}_1, \dots, \mathbf{U}_Q$ will be different too. Thus, \textbf{the same vertical structure must be used for all the components}.
 
 \subsection{Cross-localization amplitude}
 The amplitude of cross-localization is not one in this case. For $1 \le q,q' \le Q$, we denote $\mathbf{u}$ the k$^\textrm{th}$ column of $\mathbf{U}_q$ and $\mathbf{u}'$ the k$^\textrm{th}$ column of $\mathbf{U}_{q'}$. The k$^\textrm{th}$ diagonal coefficient of $\mathbf{U}_q \mathbf{U}_{q'}^\mathrm{T}$ is given by $\langle \mathbf{u},\mathbf{u}' \rangle$, where $\langle \cdot, \cdot \rangle$ denotes the canonical inner product. The Cauchy-Schwartz inequality requires that:
