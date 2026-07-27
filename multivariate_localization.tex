@@ -95,58 +95,58 @@ Copyright \copyright 2015-... UCAR, CERFACS, METEO-FRANCE, IRIT and Meteorologis
 
 \section{Framework}
 
-\subsection{State vector definition}
-The state vector $\mathbf{x} \in \mathbb{R}^n$ is split into $Q$ concatenated sub-vectors $\mathbf{x}_q$ (called ``groups''), each one gathering $P_q$ sub-vectors $\mathbf{x}_{p,q}$ of size $n_q$ (called ``variables''). Each sub-vector $\mathbf{x}_{p,q}$ corresponds to the data for a given physical variable (e.g. zonal wind, temperature, humidity, etc.). In a given group, all variables have the same size ($n_q$). Thus:
+\subsection{Increment definition}
+The increment $\delta \mathbf{x} \in \mathbb{R}^n$ is split into $Q$ concatenated sub-vectors $\delta \mathbf{x}_q$ (called ``groups''), each one gathering $P_q$ sub-vectors $\delta \mathbf{x}_{p,q}$ of size $n_q$ (called ``variables''). Each sub-vector $\delta \mathbf{x}_{p,q}$ corresponds to the data for a given physical variable (e.g. zonal wind, temperature, humidity, etc.). In a given group, all variables have the same size ($n_q$). Thus:
 \begin{align}
-\mathbf{x} = \left( \begin{array}{c}
-\mathbf{x}_1 \\[1ex]
+\delta \mathbf{x} = \left( \begin{array}{c}
+\delta \mathbf{x}_1 \\[1ex]
 \hline
 \vdots \\
 \hline
-\mathbf{x}_Q
-\end{array} \right) \quad \text{and} \quad \mathbf{x}_q = \left( \begin{array}{c}
-\mathbf{x}_{1,q} \\[1ex]
+\delta \mathbf{x}_Q
+\end{array} \right) \quad \text{and} \quad \delta \mathbf{x}_q = \left( \begin{array}{c}
+\delta \mathbf{x}_{1,q} \\[1ex]
 \hline
 \vdots \\
 \hline
-\mathbf{x}_{P_q,q}
+\delta \mathbf{x}_{P_q,q}
 \end{array} \right) 
 \end{align}
 As a consequence:
 \begin{itemize}
 \item The total number of variables is $\displaystyle P = \sum_{q=1}^Q P_q$.
-\item Each group $\mathbf{x}_q$ has a size $P_q n_q$, so the full state vector size is $n = \displaystyle \sum_{q=1}^Q P_q n_q$.
+\item Each group $\delta \mathbf{x}_q$ has a size $P_q n_q$, so the full increment size is $n = \displaystyle \sum_{q=1}^Q P_q n_q$.
 \end{itemize}
 
 \subsection{Illustration setup}
-A simple example will be used as an illustration throughout this note. We define a vector $\mathbf{x}$ with $Q = 3$ groups, where $P_1 = 3$, $P_2 = 1$ and $P_3 = 2$:
+A simple example will be used as an illustration throughout this note. We define a vector $\delta \mathbf{x}$ with $Q = 3$ groups, where $P_1 = 3$, $P_2 = 1$ and $P_3 = 2$:
 \begin{align}
 \begin{array}{c@{}c}
-\mathbf{x} = \left( \begin{array}{c}
-\mathbf{x}_{1,1} \\
-\mathbf{x}_{2,1} \\
-\mathbf{x}_{3,1} \\[1ex]
+\delta \mathbf{x} = \left( \begin{array}{c}
+\delta \mathbf{x}_{1,1} \\
+\delta \mathbf{x}_{2,1} \\
+\delta \mathbf{x}_{3,1} \\[1ex]
 \hline
-\mathbf{x}_{1,2} \\[1ex]
+\delta \mathbf{x}_{1,2} \\[1ex]
 \hline
-\mathbf{x}_{1,3} \\
-\mathbf{x}_{2,3}
+\delta \mathbf{x}_{1,3} \\
+\delta \mathbf{x}_{2,3}
 \end{array} \right)
 & 
 \begin{array}{l}
-\\[-8.5mm] \rdelim\}{3}{6mm}[$\mathbf{x}_1$ (1$^\text{st}$ group of variables)] \\[11.5mm] \rdelim\}{1}{6mm}[$\mathbf{x}_2$ (2$^\text{nd}$ group of variables)] \\[3.5mm] \rdelim\}{2}{6mm}[$\mathbf{x}_3$ (3$^\text{rd}$ group of variables)]
+\\[-8.5mm] \rdelim\}{3}{6mm}[$\delta \mathbf{x}_1$ (1$^\text{st}$ group of variables)] \\[11.5mm] \rdelim\}{1}{6mm}[$\delta \mathbf{x}_2$ (2$^\text{nd}$ group of variables)] \\[3.5mm] \rdelim\}{2}{6mm}[$\delta \mathbf{x}_3$ (3$^\text{rd}$ group of variables)]
 \end{array} \\[-1ex]
 \end{array}
 \end{align}
 
 \subsection{Localization square-root}
-The localization matrix $\mathbf{L} \in \mathbb{R}^{n \times n}$ is applied to $\mathbf{x}$. The main issue is to design a positive semi-definite $\mathbf{L}$ matrix, and the simplest solution is to build it as:
+The localization matrix $\mathbf{L} \in \mathbb{R}^{n \times n}$ is applied to $\delta \mathbf{x}$. The main issue is to design a positive semi-definite $\mathbf{L}$ matrix, and the simplest solution is to build it as:
 \begin{align}
 \mathbf{L} = \mathbf{UU}^\textrm{T}
 \end{align}
 where $\mathbf{U} \in \mathbb{R}^{n \times m}$ is called a ``square-root'' of the localization matrix $\mathbf{L}$. The number of colums $m$ of the square-root $\mathbf{U}$ can be smaller or larger than the number of lines $n$. The control vector $\mathbf{v} \in \mathbb{R}^m$ is such that:
 \begin{align}
-\mathbf{x} = \mathbf{U} \mathbf{v}
+\delta \mathbf{x} = \mathbf{U} \mathbf{v}
 \end{align}
 We can define a component $\mathbf{U}_q \in \mathbb{R}^{n_q \times m_q}$ for each group. The relationship between the number of columns $m_q$ of each component $\mathbf{U}_q$ and the total number of columns $m$ of $\mathbf{U}$ depends on the multivariate strategy.\\
 $  $\\
@@ -335,7 +335,7 @@ In order to get valid cross-products of square-roots like $\mathbf{U}_1 \mathbf{
 $  $\\
 Let's build the simplest possible system:
 \begin{itemize}
-\item Two variables are defined on two grid-points: $\mathbf{x}_1 \in \mathbb{R}^2$ and $\mathbf{x}_2 \in \mathbb{R}^2$.
+\item Two variables are defined on two grid-points: $\delta \mathbf{x}_1 \in \mathbb{R}^2$ and $\delta \mathbf{x}_2 \in \mathbb{R}^2$.
 \item The auto-localization matrices for these variables are:
 \begin{align}
 \mathbf{L}_1 = \left( \begin{array}{cc}
@@ -415,16 +415,16 @@ Thus, the cross-localization amplitude between groups $q$ and $q'$ is necessaril
 \end{center}
 
 \subsection{Mixing 3D and 2D variables}
-In many applications, the state vector contains both 3D and 2D variables. To use the crossed method in this case, it is necessary to consider the 2D variables as 3D variables with only one level containing meaningful data (the first or the last level in general) and the other levels set to zero.\\
+In many applications, the increment contains both 3D and 2D variables. To use the crossed method in this case, it is necessary to consider the 2D variables as 3D variables with only one level containing meaningful data (the first or the last level in general) and the other levels set to zero.\\
 $  $\\
-For sake of simplicity, we assume here that group 1 contains one 3D variable and group 2 contains one 2D variable. We also assume that both control variable $\mathbf{x}$ and control vector $\mathbf{v}$ can be split into $K$ components, each one handling one vertical level:
+For sake of simplicity, we assume here that group 1 contains one 3D variable and group 2 contains one 2D variable. We also assume that both control variable $\delta \mathbf{x}$ and control vector $\mathbf{v}$ can be split into $K$ components, each one handling one vertical level:
 \begin{align}
-\mathbf{x} = \left( \begin{array}{c}
-\mathbf{x}_{1,k=1} \\[1ex]
+\delta \mathbf{x} = \left( \begin{array}{c}
+\delta \mathbf{x}_{1,k=1} \\[1ex]
 \vdots \\
-\mathbf{x}_{1,k=K} \\[1ex]
+\delta \mathbf{x}_{1,k=K} \\[1ex]
 \hline
-\mathbf{x}_{2}
+\delta \mathbf{x}_{2}
 \end{array} \right) \ \text{ and } \ \mathbf{v} = \left( \begin{array}{c}
 \mathbf{v}_{k=1} \\[1ex]
 \vdots \\
@@ -433,26 +433,26 @@ For sake of simplicity, we assume here that group 1 contains one 3D variable and
 \end{align}
 We can define an extended control variable:
 \begin{align}
-\mathbf{x}' = \left( \begin{array}{c}
-\mathbf{x}_{1,k=1} \\[1ex]
+\delta \mathbf{x}' = \left( \begin{array}{c}
+\delta \mathbf{x}_{1,k=1} \\[1ex]
 \vdots \\
-\mathbf{x}_{1,k=K} \\[1ex]
+\delta \mathbf{x}_{1,k=K} \\[1ex]
 \hline
-\mathbf{x}'_{2,k=1} \\[1ex]
+\delta \mathbf{x}'_{2,k=1} \\[1ex]
 \vdots \\
-\mathbf{x}'_{2,k=K} \\[1ex]
-\end{array} \right) = \mathbf{E} \mathbf{x}
+\delta \mathbf{x}'_{2,k=K} \\[1ex]
+\end{array} \right) = \mathbf{E} \delta \mathbf{x}
 \end{align}
 where $\mathbf{E}$ is the extension operator padding with zeros, so that both sub-vectors have the same size. In general:
 \begin{itemize}
-\item either $\mathbf{x}'_{2,k=1} = \mathbf{x}_2$ and 
-$\mathbf{x}'_{2,k=2}$ to $\mathbf{x}'_{2,k=K}$ are set to zero,
-\item or $\mathbf{x}'_{2,k=K} = \mathbf{x}_2$ and 
-$\mathbf{x}'_{2,k=1}$ to $\mathbf{x}'_{2,k=K-1}$ are set to zero.
+\item either $\delta \mathbf{x}'_{2,k=1} = \delta \mathbf{x}_2$ and 
+$\delta \mathbf{x}'_{2,k=2}$ to $\delta \mathbf{x}'_{2,k=K}$ are set to zero,
+\item or $\delta \mathbf{x}'_{2,k=K} = \delta \mathbf{x}_2$ and 
+$\delta \mathbf{x}'_{2,k=1}$ to $\delta \mathbf{x}'_{2,k=K-1}$ are set to zero.
 \end{itemize}
-The adjoint of $\mathbf{E}$, denoted $\mathbf{E}^\mathrm{T}$, is thus a reduction operator removing the zeroed levels from the extended control variable $\mathbf{x}'$ to yield the control variable $\mathbf{x}$:
+The adjoint of $\mathbf{E}$, denoted $\mathbf{E}^\mathrm{T}$, is thus a reduction operator removing the zeroed levels from the extended control variable $\delta \mathbf{x}'$ to yield the control variable $\delta \mathbf{x}$:
 \begin{align}
-\mathbf{x} = \mathbf{E}^\mathrm{T} \mathbf{E} \mathbf{x}
+\delta \mathbf{x} = \mathbf{E}^\mathrm{T} \mathbf{E} \delta \mathbf{x}
 \end{align}
 We define an extended square-root $\mathbf{U}'_2$:
 \begin{align}
@@ -478,7 +478,7 @@ depending on the location of the 2D level in the 3D grid, at level 1 or $K$, res
 \end{align}
 Finally, we get
 \begin{align}
-\mathbf{x}' = \mathbf{U}' \mathbf{v}
+\delta \mathbf{x}' = \mathbf{U}' \mathbf{v}
 \end{align}
 so we can conclude that:
 \begin{align}
